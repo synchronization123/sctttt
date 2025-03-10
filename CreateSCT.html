@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DefectDojo Engagement Creator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        #csrfToken {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-weight: bold;
+            color: white;
+        }
+    </style>
+</head>
+<body class="p-5">
+    <h3>Create Engagements</h3>
+
+    <!-- CSRF Token Display -->
+    <div id="csrfToken">Fetching CSRF...</div>
+
+    <div class="mb-3">
+        <label for="engagementNames" class="form-label">Enter Engagement Names (comma-separated):</label>
+        <textarea class="form-control" id="engagementNames" rows="3"></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="createEngagements()">Create Engagements</button>
+
+    <!-- Result Section -->
+    <div id="result" class="mt-4"></div>
+    
+    <!-- Created Engagements List -->
+    <h4 class="mt-3">Created Engagements</h4>
+    <ul id="createdList" class="list-group"></ul>
+
+    <!-- Skipped Engagements List -->
+    <h4 class="mt-3">Skipped Engagements (Already Exist)</h4>
+    <ul id="skippedList" class="list-group"></ul>
+
+    <!-- Failed Engagements List -->
+    <h4 class="mt-3">Failed Engagements</h4>
+    <ul id="failedList" class="list-group"></ul>
+
+    <script>
+        let csrfToken = '';
+        const apiUrl = "https://demo.defectdojo.org/api/v2/engagements/";
+
+        // Function to fetch CSRF Token
+        async function fetchCSRFToken() {
+            try {
+                const response = await fetch('https://demo.defectdojo.org/api/key-v2', { credentials: 'include' });
+                const text = await response.text();
+                const match = text.match(/name="csrfmiddlewaretoken" value="([^"]+)"/);
+                if (match) {
+                    csrfToken = match[1];
+                    document.getElementById('csrfToken').innerText = "CSRF Token: " + csrfToken;
+                } else {
+                    document.getElementById('csrfToken').innerText = "CSRF Token not found";
+                }
+            } catch (error) {
+                document.getElementById('csrfToken').innerText = "Error fetching CSRF";
+                console.error("Error fetching CSRF token:", error);
+            }
+        }
+
+        // Function to fetch existing engagement names
+        async function getExistingEngagements() {
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                return data.results.map(item => item.name);
+            } catch (error) {
+                console.error("Error fetching existing engagements:", error);
+                return [];
+            }
+        }
+
+        // Function to create engagements
+        async function createEngagements() {
+            const namesInput = document.getElementById("engagementNames").value;
+            const names = namesInput.split(",").map(name => name.trim()).filter(name => name);
+
+            if (names.length === 0) {
+                alert("Please enter at least one engagement name.");
+                return;
+            }
+
+            document.getElementById("result").innerHTML = "<p>Checking for duplicates...</p>";
+            document.getElementById("createdList").innerHTML = "";
+            document.getElementById("skippedList").innerHTML = "";
+            document.getElementById("failedList").innerHTML = "";
+
+            const headers = {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken
+            };
+
+            const payloadTemplate = {
+                tags: ["crm"],
+                status: "Not Started",
+                engagement_type: "Interactive",
+                build_id: "Not Started",
+                commit_hash: "Not Started",
+                branch_tag: "Not Started",
+                target_start: new Date().toISOString().split("T")[0],
+                target_end: new Date().toISOString().split("T")[0],
+                lead: 1,
+                product: 2
+            };
+
+            // Fetch existing engagements
+            const existingNames = await getExistingEngagements();
+
+            let successCount = 0, failureCount = 0, skippedCount = 0;
+
+            for (const name of names) {
+                if (existingNames.includes(name)) {
+                    skippedCount++;
+                    document.getElementById("skippedList").innerHTML += `
+                        <li class="list-group-item text-warning">
+                            ⚠️ Skipped: ${name} (Already Exists)
+                        </li>`;
+                    continue;  // Skip already existing engagements
+                }
+
+                let payload = { ...payloadTemplate, name };
+
+                try {
+                    let response = await fetch(apiUrl, {
+                        method: "POST",
+                        headers: headers,
+                        body: JSON.stringify(payload)
+                    });
+
+                    let data = await response.json();
+
+                    if (response.ok) {
+                        successCount++;
+                        document.getElementById("createdList").innerHTML += `
+                            <li class="list-group-item text-success">
+                                ✅ ID: ${data.id}, Name: ${data.name}
+                            </li>`;
+                    } else {
+                        failureCount++;
+                        document.getElementById("failedList").innerHTML += `
+                            <li class="list-group-item text-danger">
+                                ❌ Name: ${name}, Error: ${JSON.stringify(data)}
+                            </li>`;
+                    }
+                } catch (error) {
+                    failureCount++;
+                    document.getElementById("failedList").innerHTML += `
+                        <li class="list-group-item text-danger">
+                            ❌ Name: ${name}, Error: ${error.message}
+                        </li>`;
+                }
+            }
+
+            document.getElementById("result").innerHTML = `
+                <p>Engagements Created: <strong>${successCount}</strong>, 
+                   Skipped: <strong>${skippedCount}</strong>, 
+                   Failed: <strong>${failureCount}</strong></p>`;
+        }
+
+        // Fetch CSRF token when the page loads
+        fetchCSRFToken();
+    </script>
+</body>
+</html>

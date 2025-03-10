@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DefectDojo Test Data</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        #csrfDisplay {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            background-color: #f8f9fa;
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body class="container mt-4">
+    <h2 class="mb-4">DefectDojo Test Data</h2>
+
+    <div id="csrfDisplay">CSRF Token: <span id="csrfTokenText">Fetching...</span></div>
+    <input type="hidden" name="csrfmiddlewaretoken" id="csrfToken" value="">
+
+    <button class="btn btn-secondary mb-3" id="refreshTable">🔄 Refresh Table</button>
+
+
+
+
+
+
+<div class="row mb-3">
+    <div class="col-md-2">
+        <label for="filterCreated" class="form-label">Created</label>
+        <input type="date" id="filterCreated" class="form-control">
+    </div>
+    <div class="col-md-2">
+        <label for="filterIssueKey" class="form-label">Issue Key</label>
+        <input type="text" id="filterIssueKey" class="form-control">
+    </div>
+    <div class="col-md-2">
+        <label for="filterIssueType" class="form-label">Issue Type</label>
+        <select id="filterIssueType" class="form-select">
+            <option value="">All</option>
+            <option value="Story">Story</option>
+            <option value="Bug">Bug</option>
+            <option value="Security">Security</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label for="filterType" class="form-label">Type</label>
+        <select id="filterType" class="form-select">
+            <option value="">All</option>
+            <option value="CP">CP</option>
+            <option value="Develop">Develop</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label for="filterVersion" class="form-label">Version</label>
+        <input type="text" id="filterVersion" class="form-control">
+    </div>
+    <div class="col-md-2">
+        <label for="filterAssignedTo" class="form-label">Assigned To</label>
+        <select id="filterAssignedTo" class="form-select">
+            <option value="">All</option>
+        </select>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-2">
+        <label for="filterAnalysis" class="form-label">Analysis</label>
+        <select id="filterAnalysis" class="form-select">
+            <option value="">All</option>
+            <option value="Completed">Completed</option>
+            <option value="Pending">Pending</option>
+            <option value="On Hold">On Hold</option>
+            <option value="Rejected">Rejected</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label for="filterStatus" class="form-label">Status</label>
+        <select id="filterStatus" class="form-select">
+            <option value="">All</option>
+            <option value="Open">Open</option>
+            <option value="Closed">Closed</option>
+            <option value="In Progress">In Progress</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label for="filterDateStart" class="form-label">Date From</label>
+        <input type="date" id="filterDateStart" class="form-control">
+    </div>
+    <div class="col-md-3">
+        <label for="filterDateEnd" class="form-label">Date To</label>
+        <input type="date" id="filterDateEnd" class="form-control">
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+        <button class="btn btn-primary me-2" id="applyFilters">Apply Filters</button>
+        <button class="btn btn-secondary" id="clearFilters">Clear Filters</button>
+    </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Created</th>
+                <th>Issue Key</th>
+                <th>Issue Type</th>
+                <th>Type</th>
+                <th>Version</th>
+                <th>Assigned To</th>
+                <th>Analysis</th>
+                <th>Assigned On</th>
+                <th>Status</th>
+                <th>Comments</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="testTableBody"></tbody>
+    </table>
+
+    <nav>
+        <ul class="pagination">
+            <li class="page-item"><button class="page-link" id="prevPage" disabled>Previous</button></li>
+            <li class="page-item"><span class="page-link" id="currentPage">1</span></li>
+            <li class="page-item"><button class="page-link" id="nextPage">Next</button></li>
+        </ul>
+    </nav>
+
+    <script>
+        let testData = [];
+        let userData = {};
+        let currentPage = 1;
+        const pageSize = 10;
+
+        async function fetchCSRFToken() {
+            try {
+                let response = await fetch("https://demo.defectdojo.org/api/key-v2", { credentials: "include" });
+                let text = await response.text();
+                let parser = new DOMParser();
+                let doc = parser.parseFromString(text, "text/html");
+                let csrfInput = doc.querySelector('input[name="csrfmiddlewaretoken"]');
+                let csrfToken = csrfInput ? csrfInput.value : "Not Found";
+                $("#csrfToken").val(csrfToken);
+                $("#csrfTokenText").text(csrfToken);
+            } catch (error) {
+                console.error("Error fetching CSRF:", error);
+                $("#csrfTokenText").text("Error fetching CSRF");
+            }
+        }
+
+ async function fetchUsers() {
+    try {
+        let response = await fetch("https://demo.defectdojo.org/api/v2/users/?offset=0&limit=100");
+        let data = await response.json();
+        userData = data.results.reduce((map, user) => {
+            map[user.id] = `${user.first_name} ${user.last_name}`;
+            return map;
+        }, {});
+
+        let assignedToDropdown = $("#filterAssignedTo");
+        data.results.forEach(user => {
+            assignedToDropdown.append(`<option value="${user.id}">${user.first_name} ${user.last_name}</option>`);
+        });
+
+    } catch (error) {
+        console.error("Error fetching users:", error);
+    }
+}
+
+
+async function fetchTestData() {
+    try {
+        let [pendingResponse, onHoldResponse] = await Promise.all([
+            fetch("https://demo.defectdojo.org/api/v2/tests/?limit=10000&o=-created&branch_tag=Completed"),
+            fetch("https://demo.defectdojo.org/api/v2/tests/?limit=10000&o=-created&branch_tag=Rejected")
+        ]);
+
+        let pendingData = await pendingResponse.json();
+        let onHoldData = await onHoldResponse.json();
+
+        testData = [...(pendingData.results || []), ...(onHoldData.results || [])];
+        displayPage();
+    } catch (error) {
+        console.error("Error fetching test data:", error);
+    }
+}
+
+
+function displayPage() {
+    let tbody = $("#testTableBody");
+    tbody.empty();
+
+    let start = (currentPage - 1) * pageSize;
+    let createdFilter = $("#filterCreated").val();
+    let issueKeyFilter = $("#filterIssueKey").val().toLowerCase();
+    let issueTypeFilter = $("#filterIssueType").val();
+    let typeFilter = $("#filterType").val();
+    let versionFilter = $("#filterVersion").val().toLowerCase();
+    let assignedToFilter = $("#filterAssignedTo").val();
+    let analysisFilter = $("#filterAnalysis").val();
+    let statusFilter = $("#filterStatus").val();
+    let dateStart = $("#filterDateStart").val();
+    let dateEnd = $("#filterDateEnd").val();
+
+    let filteredData = testData.filter(test => {
+        let createdDate = test.created ? test.created.split("T")[0] : "";
+        let leadName = userData[test.lead] || "";
+
+        return (!createdFilter || createdDate === createdFilter) &&
+            (!issueKeyFilter || (test.title && test.title.toLowerCase().includes(issueKeyFilter))) &&
+            (!issueTypeFilter || test.commit_hash === issueTypeFilter) &&
+            (!typeFilter || (test.environment === 1 && typeFilter === "CP") || (test.environment === 2 && typeFilter === "Develop")) &&
+            (!versionFilter || (test.version && test.version.toLowerCase().includes(versionFilter))) &&
+            (!assignedToFilter || test.lead == assignedToFilter) &&
+            (!analysisFilter || test.branch_tag === analysisFilter) &&
+            (!statusFilter || test.build_id === statusFilter) &&
+            (!dateStart || (test.created >= dateStart + "T00:00:00.000Z")) &&
+            (!dateEnd || (test.created <= dateEnd + "T23:59:59.999Z"));
+    });
+
+    let paginatedData = filteredData.slice(start, start + pageSize);
+
+    paginatedData.forEach(test => {
+        let createdDate = test.created ? new Date(test.created).toISOString().split("T")[0] : "N/A";
+        let leadName = userData[test.lead] || "Unassigned";
+
+        let row = $(`<tr data-id="${test.id}">
+            <td>${test.id || "N/A"}</td>
+            <td>${createdDate}</td>
+            <td>${test.title || "N/A"}</td>
+            <td>${test.commit_hash || "N/A"}</td>
+            <td>${test.environment === 1 ? "CP" : test.environment === 2 ? "Develop" : "N/A"}</td>
+            <td>${test.version || "N/A"}</td>
+            <td>${leadName}</td>
+            <td>
+                <select class="form-select branch-tag">
+                    <option value="Completed" ${test.branch_tag === "Completed" ? "selected" : ""}>Completed</option>
+                    <option value="Pending" ${test.branch_tag === "Pending" ? "selected" : ""}>Pending</option>
+                    <option value="On Hold" ${test.branch_tag === "On Hold" ? "selected" : ""}>On Hold</option>
+                    <option value="Rejected" ${test.branch_tag === "Rejected" ? "selected" : ""}>Rejected</option>
+                </select>
+            </td>
+            <td>${test.target_start ? new Date(test.target_start).toISOString().split("T")[0] : "N/A"}</td>
+            <td>${test.build_id || "N/A"}</td>
+            <td><textarea class="form-control description">${test.description || ""}</textarea></td>
+            <td>
+                <button class="btn btn-primary btn-sm save-btn">Save</button>
+                <div class="status-message mt-2 d-none"></div>
+            </td>
+        </tr>`);
+
+        tbody.append(row);
+    });
+
+    $("#currentPage").text(currentPage);
+    $("#prevPage").prop("disabled", currentPage === 1);
+    $("#nextPage").prop("disabled", currentPage * pageSize >= filteredData.length);
+}
+
+$("#applyFilters").click(() => {
+    currentPage = 1;
+    displayPage();
+});
+
+$("#clearFilters").click(() => {
+    $("#filterCreated, #filterIssueKey, #filterType, #filterVersion, #filterAssignedTo, #filterAnalysis, #filterStatus, #filterDateStart, #filterDateEnd").val("");
+    $("#filterIssueType").val("");
+    displayPage();
+});
+
+
+
+
+
+
+
+        $("#prevPage").click(() => {
+            if (currentPage > 1) {
+                currentPage--;
+                displayPage();
+            }
+        });
+
+        $("#nextPage").click(() => {
+            if (currentPage * pageSize < testData.length) {
+                currentPage++;
+                displayPage();
+            }
+        });
+
+        $(document).on("click", ".save-btn", async function () {
+            let row = $(this).closest("tr");
+            let statusMessage = row.find(".status-message");
+            let testId = row.data("id");
+            let csrfToken = $("#csrfToken").val();
+
+            try {
+                let response = await fetch(`https://demo.defectdojo.org/api/v2/tests/${testId}/`);
+                let testData = await response.json();
+
+                let updatedData = {
+                    title: testData.title,
+                    target_start: testData.target_start,
+                    target_end: testData.target_end,
+                    branch_tag: row.find(".branch-tag").val(),
+                    lead: testData.lead,
+                    test_type: testData.test_type,
+                    environment: testData.environment,
+                    description: row.find(".description").val()
+                };
+
+                await fetch(`https://demo.defectdojo.org/api/v2/tests/${testId}/`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": csrfToken
+                    },
+                    body: JSON.stringify(updatedData)
+                });
+
+                statusMessage.removeClass("d-none alert-danger").addClass("alert alert-success").text("Saved successfully! ✅");
+            } catch {
+                statusMessage.removeClass("d-none alert-success").addClass("alert alert-danger").text("Failed to save ❌");
+            }
+
+            setTimeout(() => statusMessage.addClass("d-none"), 3000);
+        });
+
+        $("#refreshTable").click(async function () {
+            await fetchTestData();
+        });
+
+        $(document).ready(async () => {
+            await fetchCSRFToken();
+            await fetchUsers();
+            await fetchTestData();
+        });
+    </script>
+</body>
+</html>
