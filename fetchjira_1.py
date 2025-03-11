@@ -41,10 +41,10 @@ def fetch_engagements():
         return []
 
 def fetch_jira_issues(version):
-    """Fetch JIRA issues where the custom field 'cf[15100]' matches the given version."""
+    """Fetch JIRA issues where the 'Build(s)' field exactly matches the given version."""
     normalized_version = normalize_version(version)
-    
-    jql_query = f'"cf[15100]" ~ "{normalized_version}"'
+
+    jql_query = f'"Build(s)" = "{normalized_version}"'
     start_at = 0
     max_results = 50
     all_issues = []
@@ -52,7 +52,7 @@ def fetch_jira_issues(version):
     while True:
         params = {
             "jql": jql_query,
-            "fields": "key,status,issuetype,cf[15100]",
+            "fields": "key,status,issuetype,Build(s)",
             "maxResults": max_results,
             "startAt": start_at
         }
@@ -89,7 +89,6 @@ def check_existing_tests(engagement_id):
 def create_test(engagement_id, issue, target_start, target_end, lead, version):
     """Create a test under the specified engagement ID for a JIRA issue."""
     status = issue["fields"]["status"]["name"] if "status" in issue["fields"] else "N/A"
-    
     issue_type = issue["fields"]["issuetype"]["name"] if "issuetype" in issue["fields"] else "N/A"
 
     test_data = {
@@ -162,15 +161,22 @@ def main():
         existing_tests = check_existing_tests(engagement_id)
 
         for issue in issues:
-            build_versions = issue["fields"].get("cf[15100]", [])
+            build_versions = issue["fields"].get("Build(s)", [])
+            
+            # Debug: Print retrieved field values
+            print(f"🔎 JIRA Issue {issue['key']} - Raw 'Build(s)' Field: {build_versions}")
+
+            # Ensure it's a list for iteration
             if not isinstance(build_versions, list):
                 build_versions = [build_versions]
 
-            matched_version = next((bv for bv in build_versions if normalize_version(bv) == normalized_version), None)
+            # Normalize each value before comparing
+            normalized_build_versions = [normalize_version(str(bv)) for bv in build_versions]
 
-            if matched_version:
+            print(f"🔎 JIRA Issue {issue['key']} - Normalized Builds: {normalized_build_versions}")
+
+            if normalized_version in normalized_build_versions:
                 print(f"🟢 JIRA issue {issue['key']} matches engagement version {normalized_version}")
-
                 if issue["key"] not in existing_tests:
                     create_test(engagement_id, issue, target_start, target_end, lead, normalized_version)
                 else:
