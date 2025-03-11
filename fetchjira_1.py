@@ -27,28 +27,38 @@ def normalize_version(version):
 
 def fetch_engagements():
     """Fetch engagements tagged 'crm' and skip those with the label 'crmjiraadded'."""
+    print("\n📌 Fetching engagements from DefectDojo...")
     url = f"{DEFECTDOJO_BASE_URL}/engagements/?tags=crm"
     try:
         response = requests.get(url, headers=DEFECTDOJO_HEADERS)
         response.raise_for_status()
         engagements = response.json().get("results", [])
+        print(f"✅ Found {len(engagements)} engagements before filtering.")
 
         # Filter out engagements with the 'crmjiraadded' label
-        return [e for e in engagements if 'crmjiraadded' not in e.get("tags", [])]
+        filtered_engagements = [e for e in engagements if 'crmjiraadded' not in e.get("tags", [])]
+        print(f"✅ {len(filtered_engagements)} engagements remain after filtering 'crmjiraadded'.")
+        return filtered_engagements
 
     except requests.RequestException as e:
-        print(f"Error fetching engagements: {e}")
+        print(f"❌ Error fetching engagements: {e}")
         return []
 
-def fetch_jira_issues():
-    """Fetch JIRA issues with the required fields."""
+def fetch_jira_issues(version):
+    """Fetch JIRA issues where 'Build(s)' matches the given version."""
+    normalized_version = normalize_version(version)
+
+    # JQL query to fetch issues with a matching 'Build(s)' field
+    jql_query = f'"Build(s)" = "{normalized_version}"'
+
+    print(f"\n📌 Fetching JIRA issues with JQL: {jql_query}")
     start_at = 0
     max_results = 50
     all_issues = []
 
     while True:
         params = {
-            "jql": 'issueType IS NOT EMPTY',  # Get all issues
+            "jql": jql_query,
             "fields": "key,status,issuetype,Build(s)",
             "maxResults": max_results,
             "startAt": start_at
@@ -60,27 +70,33 @@ def fetch_jira_issues():
             
             issues = data.get("issues", [])
             all_issues.extend(issues)
-            
+
+            print(f"✅ Retrieved {len(issues)} issues from JIRA.")
+
             if len(issues) < max_results:
                 break
-            
+
             start_at += max_results
 
         except requests.RequestException as e:
-            print(f"Error fetching JIRA issues: {e}")
+            print(f"❌ Error fetching JIRA issues: {e}")
             break
 
+    print(f"📌 Total JIRA issues found: {len(all_issues)}\n")
     return all_issues
 
 def check_existing_tests(engagement_id):
     """Check existing tests under an engagement to avoid duplicates."""
+    print(f"📌 Checking existing tests for engagement {engagement_id}...")
     url = f"{DEFECTDOJO_BASE_URL}/tests/?engagement={engagement_id}"
     try:
         response = requests.get(url, headers=DEFECTDOJO_HEADERS)
         response.raise_for_status()
-        return {test["title"] for test in response.json().get("results", [])}
+        existing_tests = {test["title"] for test in response.json().get("results", [])}
+        print(f"✅ Found {len(existing_tests)} existing tests.")
+        return existing_tests
     except requests.RequestException as e:
-        print(f"Error checking existing tests: {e}")
+        print(f"❌ Error checking existing tests: {e}")
         return set()
 
 def create_test(engagement_id, issue, target_start, target_end, lead, version):
@@ -104,16 +120,18 @@ def create_test(engagement_id, issue, target_start, target_end, lead, version):
         "version": version  
     }
     
+    print(f"📌 Creating test for issue {issue['key']} under engagement {engagement_id}...")
     url = f"{DEFECTDOJO_BASE_URL}/tests/"
     try:
         response = requests.post(url, headers=DEFECTDOJO_HEADERS, json=test_data)
         response.raise_for_status()
-        print(f"✅ Created test for issue {issue['key']} under engagement {engagement_id} (Version: {version})")
+        print(f"✅ Test created for issue {issue['key']} (Version: {version})")
     except requests.RequestException as e:
         print(f"❌ Error creating test for {issue['key']}: {e}")
 
 def update_engagement_with_label(engagement_id):
     """Update the engagement by adding the 'crmjiraadded' label."""
+    print(f"📌 Updating engagement {engagement_id} with 'crmjiraadded' label...")
     url = f"{DEFECTDOJO_BASE_URL}/engagements/{engagement_id}/"
     try:
         response = requests.get(url, headers=DEFECTDOJO_HEADERS)
@@ -128,7 +146,7 @@ def update_engagement_with_label(engagement_id):
 
         response = requests.patch(url, headers=DEFECTDOJO_HEADERS, json=update_data)
         response.raise_for_status()
-        print(f"✅ Engagement {engagement_id} updated with 'crmjiraadded' label.")
+        print(f"✅ Engagement {engagement_id} updated successfully.")
 
     except requests.RequestException as e:
         print(f"❌ Error updating engagement {engagement_id}: {e}")
@@ -137,11 +155,9 @@ def main():
     engagements = fetch_engagements()
 
     if not engagements:
-        print("No engagements found.")
+        print("❌ No engagements found. Exiting.")
         return
 
-    issues = fetch_jira_issues()
-    
     for engagement in engagements:
         engagement_id = engagement["id"]
         label = engagement["name"]
@@ -152,28 +168,20 @@ def main():
 
         print(f"\n🔍 Checking engagement {engagement_id} (Label: {label}, Normalized: {normalized_version})")
 
+        issues = fetch_jira_issues(normalized_version)
+        if not issues:
+            print(f"❌ No JIRA issues found for version: {normalized_version}")
+            continue
+
         existing_tests = check_existing_tests(engagement_id)
 
         for issue in issues:
-            build_versions = issue["fields"].get("Build(s)", [])
+            print(f"📌 Processing JIRA issue {issue['key']}...")
 
-            # Ensure it's a list for iteration
-            if not isinstance(build_versions, list):
-                build_versions = [build_versions]
-
-            # Normalize each value before comparing
-            normalized_build_versions = {normalize_version(str(bv)) for bv in build_versions}
-
-            print(f"🔎 JIRA Issue {issue['key']} - Normalized Builds: {normalized_build_versions}")
-
-            if normalized_version in normalized_build_versions:
-                print(f"🟢 JIRA issue {issue['key']} matches engagement version {normalized_version}")
-                if issue["key"] not in existing_tests:
-                    create_test(engagement_id, issue, target_start, target_end, lead, normalized_version)
-                else:
-                    print(f"⚠️ Test already exists for issue {issue['key']} under engagement {engagement_id}")
+            if issue["key"] not in existing_tests:
+                create_test(engagement_id, issue, target_start, target_end, lead, normalized_version)
             else:
-                print(f"❌ JIRA issue {issue['key']} does not match the engagement version {normalized_version}")
+                print(f"⚠️ Test already exists for issue {issue['key']} under engagement {engagement_id}")
 
         # Update engagement with 'crmjiraadded' label
         update_engagement_with_label(engagement_id)
