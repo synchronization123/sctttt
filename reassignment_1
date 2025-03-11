@@ -116,7 +116,6 @@
                 $(".test-case-checkbox").prop("checked", isChecked);
             });
 
-            // Ensure individual checkbox changes update the header checkbox state
             $(document).on("change", ".test-case-checkbox", function () {
                 let allChecked = $(".test-case-checkbox").length === $(".test-case-checkbox:checked").length;
                 $("#selectAll").prop("checked", allChecked);
@@ -136,21 +135,8 @@
             function fetchTestCases() {
                 $.get(testCasesUrl, function (data) {
                     testCases = data.results;
-                    populateFilters(testCases);
                     renderTestCases(testCases);
                 });
-            }
-
-            function populateFilters(data) {
-                let versions = new Set();
-                let commitHashes = new Set();
-                data.forEach(test => {
-                    if (test.version) versions.add(test.version);
-                    if (test.commit_hash) commitHashes.add(test.commit_hash);
-                });
-
-                $("#versionFilter").html(`<option value="">Filter by Version</option>` + [...versions].map(v => `<option value="${v}">${v}</option>`).join(""));
-                $("#commitHashFilter").html(`<option value="">Filter by Commit Hash</option>` + [...commitHashes].map(h => `<option value="${h}">${h}</option>`).join(""));
             }
 
             function renderTestCases(data) {
@@ -172,18 +158,6 @@
                 $("#testCasesBody").html(rows);
             }
 
-            $("#applyFilters").click(function () {
-                let version = $("#versionFilter").val();
-                let commitHash = $("#commitHashFilter").val();
-                let filtered = testCases.filter(test => 
-                    (version === "" || test.version === version) &&
-                    (commitHash === "" || test.commit_hash === commitHash)
-                );
-                renderTestCases(filtered);
-            });
-
-            $("#clearFilters").click(() => renderTestCases(testCases));
-
             $("#bulkReassign").click(function () {
                 const selectedTests = $(".test-case-checkbox:checked").map(function () { return $(this).val(); }).get();
                 const newLeadId = $("#leadSelect").val();
@@ -198,23 +172,32 @@
 
                 $("#confirmReassign").off().click(() => {
                     selectedTests.forEach(testId => {
-                        let testCase = testCases.find(t => t.id == testId);
-                        $.ajax({
-                            url: updateTestUrl + testId + "/",
-                            type: "PUT",
-                            contentType: "application/json",
-                            headers: { "X-CSRFToken": csrfToken },
-                            data: JSON.stringify({
+                        $.get(updateTestUrl + testId + "/", function (testCase) {
+                            let updatedTest = {
+                                id: testCase.id,
+                                title: testCase.title,
+                                target_start: testCase.target_start,
+                                target_end: testCase.target_end,
                                 lead: parseInt(newLeadId),
+                                test_type: testCase.test_type,
+                                environment: testCase.environment,
                                 description: testCase.description,
                                 build_id: testCase.build_id,
                                 branch_tag: testCase.branch_tag
-                            }),
-                            success: function () {
-                                $("#successModal").modal("show");
-                                setTimeout(() => { $("#successModal").modal("hide"); }, 2000);
-                                fetchTestCases();
-                            }
+                            };
+
+                            $.ajax({
+                                url: updateTestUrl + testId + "/",
+                                type: "PUT",
+                                contentType: "application/json",
+                                headers: { "X-CSRFToken": csrfToken },
+                                data: JSON.stringify(updatedTest),
+                                success: function () {
+                                    $("#successModal").modal("show");
+                                    setTimeout(() => { $("#successModal").modal("hide"); }, 2000);
+                                    fetchTestCases();
+                                }
+                            });
                         });
                     });
                 });
