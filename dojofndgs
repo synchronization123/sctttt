@@ -1,0 +1,46 @@
+import requests
+import pandas as pd
+
+# DefectDojo API details
+API_URL = "https://dojo.com/api/v2/findings/"
+API_TOKEN = "hjjfgjkgg"
+HEADERS = {
+    "Authorization": f"Token {API_TOKEN}",
+    "Content-Type": "application/json"
+}
+
+# Read findings IDs from Excel file
+def get_finding_ids(file_path):
+    try:
+        df = pd.read_excel(file_path)
+        return df["id"].tolist()
+    except Exception as e:
+        print(f"Error reading Excel file: {e}")
+        return []
+
+# Delete finding by ID
+def delete_finding(finding_id):
+    url = f"{API_URL}{finding_id}/"
+    response = requests.delete(url, headers=HEADERS)
+
+    if response.status_code == 204:
+        print(f"Successfully deleted finding ID: {finding_id}")
+    else:
+        print(f"Failed to delete finding ID: {finding_id} - Status Code: {response.status_code} - {response.text}")
+
+# Main function
+def main():
+    file_path = "findings.xlsx"
+    finding_ids = get_finding_ids(file_path)
+
+    if not finding_ids:
+        print("No findings found to delete.")
+        return
+
+    print(f"Found {len(finding_ids)} findings to delete.")
+    
+    for finding_id in finding_ids:
+        delete_finding(finding_id)
+
+if __name__ == "__main__":
+    main()
