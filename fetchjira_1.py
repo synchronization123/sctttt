@@ -99,7 +99,7 @@ def check_existing_tests(engagement_id):
         print(f"❌ Error checking existing tests: {e}")
         return set()
 
-def create_test(engagement_id, issue, target_start, target_end, lead, version):
+def create_test(engagement_id, issue, target_start, target_end, lead, version, environment):
     """Create a test under the specified engagement ID for a JIRA issue."""
     status = issue["fields"]["status"]["name"] if "status" in issue["fields"] else "N/A"
     issue_type = issue["fields"]["issuetype"]["name"] if "issuetype" in issue["fields"] else "N/A"
@@ -114,13 +114,13 @@ def create_test(engagement_id, issue, target_start, target_end, lead, version):
         "engagement": engagement_id,
         "lead": lead,
         "test_type": 150,
-        "environment": 6,
-        "build_id": status,  
+        "environment": environment,
+        "build_id": status, 
         "commit_hash": issue_type,  # Store the issue type
         "version": version  
     }
     
-    print(f"📌 Creating test for issue {issue['key']} under engagement {engagement_id}...")
+    print(f"📌 Creating test for issue {issue['key']} under engagement {engagement_id} (Environment: {environment})...")
     url = f"{DEFECTDOJO_BASE_URL}/tests/"
     try:
         response = requests.post(url, headers=DEFECTDOJO_HEADERS, json=test_data)
@@ -166,7 +166,10 @@ def main():
         lead = engagement["lead"]
         normalized_version = normalize_version(label)
 
-        print(f"\n🔍 Checking engagement {engagement_id} (Label: {label}, Normalized: {normalized_version})")
+        # Determine environment based on whether "develop" is in the label
+        environment = 9 if re.search(r"develop", label, re.IGNORECASE) else 10
+
+        print(f"\n🔍 Checking engagement {engagement_id} (Label: {label}, Normalized: {normalized_version}, Environment: {environment})")
 
         issues = fetch_jira_issues(normalized_version)
         if not issues:
@@ -179,7 +182,7 @@ def main():
             print(f"📌 Processing JIRA issue {issue['key']}...")
 
             if issue["key"] not in existing_tests:
-                create_test(engagement_id, issue, target_start, target_end, lead, normalized_version)
+                create_test(engagement_id, issue, target_start, target_end, lead, normalized_version, environment)
             else:
                 print(f"⚠️ Test already exists for issue {issue['key']} under engagement {engagement_id}")
 
