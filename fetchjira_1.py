@@ -40,18 +40,15 @@ def fetch_engagements():
         print(f"Error fetching engagements: {e}")
         return []
 
-def fetch_jira_issues(version):
-    """Fetch JIRA issues where the 'Build(s)' field exactly matches the given version."""
-    normalized_version = normalize_version(version)
-
-    jql_query = f'"Build(s)" = "{normalized_version}"'
+def fetch_jira_issues():
+    """Fetch JIRA issues with the required fields."""
     start_at = 0
     max_results = 50
     all_issues = []
 
     while True:
         params = {
-            "jql": jql_query,
+            "jql": 'issueType IS NOT EMPTY',  # Get all issues
             "fields": "key,status,issuetype,Build(s)",
             "maxResults": max_results,
             "startAt": start_at
@@ -143,6 +140,8 @@ def main():
         print("No engagements found.")
         return
 
+    issues = fetch_jira_issues()
+    
     for engagement in engagements:
         engagement_id = engagement["id"]
         label = engagement["name"]
@@ -153,25 +152,17 @@ def main():
 
         print(f"\n🔍 Checking engagement {engagement_id} (Label: {label}, Normalized: {normalized_version})")
 
-        issues = fetch_jira_issues(normalized_version)
-        if not issues:
-            print(f"No issues found in JIRA for version: {normalized_version}")
-            continue
-
         existing_tests = check_existing_tests(engagement_id)
 
         for issue in issues:
             build_versions = issue["fields"].get("Build(s)", [])
-            
-            # Debug: Print retrieved field values
-            print(f"🔎 JIRA Issue {issue['key']} - Raw 'Build(s)' Field: {build_versions}")
 
             # Ensure it's a list for iteration
             if not isinstance(build_versions, list):
                 build_versions = [build_versions]
 
             # Normalize each value before comparing
-            normalized_build_versions = [normalize_version(str(bv)) for bv in build_versions]
+            normalized_build_versions = {normalize_version(str(bv)) for bv in build_versions}
 
             print(f"🔎 JIRA Issue {issue['key']} - Normalized Builds: {normalized_build_versions}")
 
