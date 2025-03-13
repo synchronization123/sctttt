@@ -1,5 +1,6 @@
 import requests
 import pandas as pd
+from concurrent.futures import ThreadPoolExecutor
 
 # DefectDojo API details
 API_URL = "https://dojo.com/api/v2/findings/"
@@ -18,15 +19,20 @@ def get_finding_ids(file_path):
         print(f"Error reading Excel file: {e}")
         return []
 
-# Delete finding by ID
+# Delete a single finding
 def delete_finding(finding_id):
     url = f"{API_URL}{finding_id}/"
     response = requests.delete(url, headers=HEADERS)
 
     if response.status_code == 204:
-        print(f"Successfully deleted finding ID: {finding_id}")
+        print(f"✅ Successfully deleted finding ID: {finding_id}")
     else:
-        print(f"Failed to delete finding ID: {finding_id} - Status Code: {response.status_code} - {response.text}")
+        print(f"❌ Failed to delete finding ID: {finding_id} - Status Code: {response.status_code} - {response.text}")
+
+# Delete findings in batches using multithreading
+def delete_findings_in_batches(finding_ids, batch_size=5):
+    with ThreadPoolExecutor(max_workers=batch_size) as executor:
+        executor.map(delete_finding, finding_ids)
 
 # Main function
 def main():
@@ -37,10 +43,9 @@ def main():
         print("No findings found to delete.")
         return
 
-    print(f"Found {len(finding_ids)} findings to delete.")
-    
-    for finding_id in finding_ids:
-        delete_finding(finding_id)
+    print(f"Found {len(finding_ids)} findings to delete. Deleting in batches...")
+
+    delete_findings_in_batches(finding_ids, batch_size=10)  # Adjust batch_size as needed
 
 if __name__ == "__main__":
     main()
