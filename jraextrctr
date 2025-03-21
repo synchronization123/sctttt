@@ -1,11 +1,11 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jira ID Extractor</title>
     <style>
-        /* Minimal Bootstrap CSS (custom subset for this app) */
+        /* Minimal Bootstrap CSS */
         :root {
             --bs-blue: #0d6efd;
             --bs-success: #198754;
@@ -124,8 +124,6 @@
     <div class="container">
         <h1 class="text-center mb-4">Jira ID Extractor</h1>
         
-        <div id="alertContainer"></div>
-        
         <div class="drop-zone" id="dropZone">
             Drag & Drop files here or click to upload<br>
             (.txt, .xls, .xlsx, .csv, .csvx)
@@ -143,6 +141,7 @@
             <h3>Extracted Jira IDs:</h3>
             <div id="jiraSummary" class="mb-2"></div>
             <textarea class="form-control" id="resultText" readonly></textarea>
+            <div id="alertContainer"></div>
         </div>
     </div>
 
@@ -158,7 +157,7 @@
             });
         }
 
-        // SheetJS (minimal version for this use case)
+        // SheetJS (minimal version)
         const XLSX = {
             utils: {
                 json_to_sheet: function(data) {
@@ -203,7 +202,7 @@
                 const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
-                link.download = filename.replace('.xlsx', '.csv'); // Simplified to CSV
+                link.download = filename.replace('.xlsx', '.csv');
                 link.click();
             }
         };
@@ -216,6 +215,7 @@
         const copyBtn = document.getElementById('copyBtn');
         const exportBtn = document.getElementById('exportBtn');
         const alertContainer = document.getElementById('alertContainer');
+        let importedFileName = null;
 
         function showAlert(message, type = 'danger') {
             const alert = document.createElement('div');
@@ -259,7 +259,7 @@
                 return;
             }
             const jiraPattern = /[A-Z]+-\d+/g;
-            const jiraIds = [...new Set(text.match(jiraPattern) || [])];
+            const jiraIds = [...new Set(text.match(jiraPattern) || [])]; // Ensure no duplicates
             const result = jiraIds.join(', ');
             resultText.value = result;
             const jiraCount = jiraIds.length;
@@ -289,15 +289,15 @@
                 return;
             }
             try {
-                const jiraIds = resultText.value.split(', ').filter(id => id);
-                const jql = `issuekey in (${resultText.value})`;
-                const worksheet = XLSX.utils.json_to_sheet([
-                    { 'Jira IDs': resultText.value },
-                    { 'JQL Query': jql }
-                ]);
+                const jiraIds = resultText.value.split(', ').filter(id => id); // Already unique from Set
+                const data = jiraIds.map(id => ({ "Jira ID": id })); // First column named "Jira ID"
+                const worksheet = XLSX.utils.json_to_sheet(data);
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, 'Jira IDs');
-                XLSX.writeFile(workbook, 'jira_ids_export.xlsx');
+                const exportFileName = importedFileName ? 
+                    importedFileName.replace(/\.[^/.]+$/, "") : 
+                    'jira_ids_export';
+                XLSX.writeFile(workbook, `${exportFileName}.csv`);
                 showAlert('Exported to Excel successfully!', 'success');
             } catch (err) {
                 showAlert('Failed to export to Excel.');
@@ -315,6 +315,7 @@
                 showAlert('Invalid file type. Please use .txt, .xls, .xlsx, .csv, or .csvx files.');
                 return;
             }
+            importedFileName = file.name; // Store the imported file name
             const reader = new FileReader();
             reader.onload = (e) => {
                 inputText.value = e.target.result;
