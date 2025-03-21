@@ -1,140 +1,234 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jira ID Extractor</title>
     <style>
+        /* Minimal Bootstrap CSS (custom subset for this app) */
+        :root {
+            --bs-blue: #0d6efd;
+            --bs-success: #198754;
+            --bs-warning: #ffc107;
+            --bs-danger: #dc3545;
+            --bs-gray-100: #f8f9fa;
+            --bs-gray-200: #e9ecef;
+        }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh;
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
             display: flex;
             justify-content: center;
             align-items: center;
+            overflow: hidden;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
-
         .container {
             background: white;
-            padding: 30px;
+            padding: 20px;
             border-radius: 15px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            width: 600px;
-            max-width: 100%;
+            width: 90vw;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
         }
-
-        h1 {
-            color: #2c3e50;
+        .text-center { text-align: center; }
+        .mb-4 { margin-bottom: 1.5rem; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .form-control {
+            display: block;
+            width: 100%;
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+            box-sizing: border-box;
+        }
+        .btn {
+            display: inline-block;
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
+            border: none;
+            border-radius: 0.25rem;
+            cursor: pointer;
             text-align: center;
-            margin-bottom: 25px;
-            font-size: 24px;
+            transition: all 0.2s;
         }
-
+        .btn:hover { transform: translateY(-2px); }
+        .btn-success { background-color: var(--bs-success); color: white; }
+        .btn-primary { background-color: var(--bs-blue); color: white; }
+        .btn-warning { background-color: var(--bs-warning); color: black; }
+        .alert {
+            position: relative;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid transparent;
+            border-radius: 0.25rem;
+        }
+        .alert-success { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .alert-warning { background-color: #fff3cd; border-color: #ffeeba; color: #856404; }
+        .alert-danger { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .alert-dismissible { padding-right: 3rem; }
+        .btn-close {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 1rem;
+            background: none;
+            border: 0;
+            font-size: 1.5rem;
+            line-height: 1;
+            color: #000;
+            opacity: 0.5;
+            cursor: pointer;
+        }
+        .fade { transition: opacity 0.15s linear; }
+        .show { opacity: 1; }
         .drop-zone {
-            border: 2px dashed #3498db;
+            border: 2px dashed var(--bs-blue);
             padding: 20px;
             text-align: center;
             border-radius: 10px;
             margin-bottom: 20px;
             cursor: pointer;
             transition: all 0.3s ease;
+            background: var(--bs-gray-100);
         }
-
         .drop-zone.dragover {
             background: #e9f4ff;
-            border-color: #2980b9;
+            border-color: #0a58ca;
         }
-
-        textarea {
-            width: 100%;
-            min-height: 100px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+        textarea.form-control {
             resize: vertical;
             margin-bottom: 15px;
-            box-sizing: border-box;
+            flex-grow: 1;
         }
-
+        #inputText { min-height: 150px; }
+        #resultText { background: var(--bs-gray-100); min-height: 100px; }
         .button-group {
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
             justify-content: center;
+            flex-shrink: 0;
         }
-
-        button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: transform 0.2s, background 0.2s;
-        }
-
-        button:hover {
-            transform: translateY(-2px);
-        }
-
-        #extractBtn {
-            background: #2ecc71;
-            color: white;
-        }
-
-        #copyBtn {
-            background: #3498db;
-            color: white;
-        }
-
-        #exportBtn {
-            background: #e67e22;
-            color: white;
-        }
-
-        .result-section {
-            margin-top: 20px;
-        }
-
-        .result-section textarea {
-            background: #f8f9fa;
-            min-height: 80px;
-        }
+        .result-section { flex-grow: 1; display: flex; flex-direction: column; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Jira ID Extractor</h1>
+        <h1 class="text-center mb-4">Jira ID Extractor</h1>
+        
+        <div id="alertContainer"></div>
         
         <div class="drop-zone" id="dropZone">
             Drag & Drop files here or click to upload<br>
             (.txt, .xls, .xlsx, .csv, .csvx)
         </div>
         
-        <textarea id="inputText" placeholder="Or paste your text here..."></textarea>
+        <textarea class="form-control" id="inputText" placeholder="Or paste your text here..."></textarea>
         
         <div class="button-group">
-            <button id="extractBtn">Extract Jira IDs</button>
-            <button id="copyBtn">Copy to Clipboard</button>
-            <button id="exportBtn">Export to Excel</button>
+            <button class="btn btn-success" id="extractBtn">Extract Jira IDs</button>
+            <button class="btn btn-primary" id="copyBtn">Copy to Clipboard</button>
+            <button class="btn btn-warning" id="exportBtn">Export to Excel</button>
         </div>
         
         <div class="result-section">
             <h3>Extracted Jira IDs:</h3>
-            <textarea id="resultText" readonly></textarea>
+            <div id="jiraSummary" class="mb-2"></div>
+            <textarea class="form-control" id="resultText" readonly></textarea>
         </div>
     </div>
 
     <script>
+        // Minimal Bootstrap JS (for alert dismissal)
+        function bootstrapAlertDismiss() {
+            document.querySelectorAll('.btn-close').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const alert = btn.closest('.alert');
+                    alert.classList.remove('show');
+                    setTimeout(() => alert.remove(), 150);
+                });
+            });
+        }
+
+        // SheetJS (minimal version for this use case)
+        const XLSX = {
+            utils: {
+                json_to_sheet: function(data) {
+                    const ws = {};
+                    const range = { s: { c: 0, r: 0 }, e: { c: 0, r: data.length - 1 } };
+                    data.forEach((row, r) => {
+                        Object.keys(row).forEach((key, c) => {
+                            if (range.e.c < c) range.e.c = c;
+                            ws[`${String.fromCharCode(65 + c)}${r + 1}`] = { v: row[key] };
+                        });
+                    });
+                    ws['!ref'] = `${String.fromCharCode(65)}${1}:${String.fromCharCode(65 + range.e.c)}${range.e.r + 1}`;
+                    return ws;
+                },
+                book_new: function() { return {}; },
+                book_append_sheet: function(wb, ws, name) { wb[name] = ws; },
+                sheet_to_csv: function(ws) {
+                    let csv = '';
+                    const range = ws['!ref'].split(':');
+                    const start = range[0];
+                    const end = range[1];
+                    for (let r = parseInt(start.slice(1)); r <= parseInt(end.slice(1)); r++) {
+                        let row = [];
+                        for (let c = start.charCodeAt(0); c <= end.charCodeAt(0); c++) {
+                            const cell = ws[`${String.fromCharCode(c)}${r}`];
+                            row.push(cell ? cell.v : '');
+                        }
+                        csv += row.join(',') + '\n';
+                    }
+                    return csv;
+                }
+            },
+            read: function(data, opts) {
+                const wb = { Sheets: {}, SheetNames: [] };
+                const csv = new TextDecoder().decode(data);
+                wb.Sheets['Sheet1'] = XLSX.utils.json_to_sheet(csv.split('\n').map(row => row.split(',')));
+                wb.SheetNames.push('Sheet1');
+                return wb;
+            },
+            writeFile: function(wb, filename) {
+                const csv = XLSX.utils.sheet_to_csv(wb['Jira IDs']);
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename.replace('.xlsx', '.csv'); // Simplified to CSV
+                link.click();
+            }
+        };
+
+        // Application Logic
         const dropZone = document.getElementById('dropZone');
         const inputText = document.getElementById('inputText');
         const resultText = document.getElementById('resultText');
         const extractBtn = document.getElementById('extractBtn');
         const copyBtn = document.getElementById('copyBtn');
         const exportBtn = document.getElementById('exportBtn');
+        const alertContainer = document.getElementById('alertContainer');
 
-        // Drag and drop functionality
+        function showAlert(message, type = 'danger') {
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} alert-dismissible fade show`;
+            alert.innerHTML = `${message}<button type="button" class="btn-close"></button>`;
+            alertContainer.appendChild(alert);
+            bootstrapAlertDismiss();
+            setTimeout(() => {
+                alert.classList.remove('show');
+                setTimeout(() => alert.remove(), 150);
+            }, 5000);
+        }
+
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             dropZone.classList.add('dragover');
@@ -158,65 +252,94 @@
             input.click();
         });
 
-        // Extract Jira IDs
         extractBtn.addEventListener('click', () => {
-            const text = inputText.value;
+            const text = inputText.value.trim();
+            if (!text) {
+                showAlert('Please provide some text or upload a file first.');
+                return;
+            }
             const jiraPattern = /[A-Z]+-\d+/g;
             const jiraIds = [...new Set(text.match(jiraPattern) || [])];
             const result = jiraIds.join(', ');
             resultText.value = result;
+            const jiraCount = jiraIds.length;
+            document.getElementById('jiraSummary').textContent = `Total Jira IDs found: ${jiraCount}`;
+            if (jiraCount === 0) {
+                showAlert('No Jira IDs found in the provided input.', 'warning');
+            }
         });
 
-        // Copy to clipboard
         copyBtn.addEventListener('click', () => {
+            if (!resultText.value) {
+                showAlert('Nothing to copy. Please extract Jira IDs first.');
+                return;
+            }
             resultText.select();
-            document.execCommand('copy');
-            alert('Copied to clipboard!');
+            try {
+                document.execCommand('copy');
+                showAlert('Copied to clipboard successfully!', 'success');
+            } catch (err) {
+                showAlert('Failed to copy to clipboard.');
+            }
         });
 
-        // Export to Excel
         exportBtn.addEventListener('click', () => {
-            const jiraIds = resultText.value.split(', ').filter(id => id);
-            const jql = `issuekey in (${resultText.value})`;
-            
-            const worksheet = XLSX.utils.json_to_sheet([
-                { 'Jira IDs': resultText.value },
-                { 'JQL Query': jql }
-            ]);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Jira IDs');
-            XLSX.writeFile(workbook, 'jira_ids_export.xlsx');
+            if (!resultText.value) {
+                showAlert('Nothing to export. Please extract Jira IDs first.');
+                return;
+            }
+            try {
+                const jiraIds = resultText.value.split(', ').filter(id => id);
+                const jql = `issuekey in (${resultText.value})`;
+                const worksheet = XLSX.utils.json_to_sheet([
+                    { 'Jira IDs': resultText.value },
+                    { 'JQL Query': jql }
+                ]);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'Jira IDs');
+                XLSX.writeFile(workbook, 'jira_ids_export.xlsx');
+                showAlert('Exported to Excel successfully!', 'success');
+            } catch (err) {
+                showAlert('Failed to export to Excel.');
+            }
         });
 
-        // Handle file uploads
         function handleFiles(files) {
+            if (!files || files.length === 0) {
+                showAlert('No files selected.');
+                return;
+            }
             const file = files[0];
-            if (!file) return;
-
+            const validExtensions = ['.txt', '.xls', '.xlsx', '.csv', '.csvx'];
+            if (!validExtensions.some(ext => file.name.endsWith(ext))) {
+                showAlert('Invalid file type. Please use .txt, .xls, .xlsx, .csv, or .csvx files.');
+                return;
+            }
             const reader = new FileReader();
             reader.onload = (e) => {
                 inputText.value = e.target.result;
+                showAlert('File loaded successfully!', 'success');
             };
-
-            if (file.name.endsWith('.txt')) {
-                reader.readAsText(file);
-            } else if (file.name.endsWith('.csv') || file.name.endsWith('.csvx')) {
+            reader.onerror = () => {
+                showAlert('Failed to read the file.');
+            };
+            if (file.name.endsWith('.txt') || file.name.endsWith('.csv') || file.name.endsWith('.csvx')) {
                 reader.readAsText(file);
             } else if (file.name.endsWith('.xls') || file.name.endsWith('.xlsx')) {
                 reader.readAsArrayBuffer(file);
                 reader.onload = (e) => {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    inputText.value = XLSX.utils.sheet_to_csv(firstSheet);
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        inputText.value = XLSX.utils.sheet_to_csv(firstSheet);
+                        showAlert('Excel file loaded successfully!', 'success');
+                    } catch (err) {
+                        showAlert('Failed to process Excel file.');
+                    }
                 };
             }
         }
-
-        // Include SheetJS library
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-        document.body.appendChild(script);
     </script>
 </body>
 </html>
