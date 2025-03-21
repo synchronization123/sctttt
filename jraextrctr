@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jira ID Extractor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            width: 600px;
+            max-width: 100%;
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 24px;
+        }
+
+        .drop-zone {
+            border: 2px dashed #3498db;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .drop-zone.dragover {
+            background: #e9f4ff;
+            border-color: #2980b9;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            resize: vertical;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        #extractBtn {
+            background: #2ecc71;
+            color: white;
+        }
+
+        #copyBtn {
+            background: #3498db;
+            color: white;
+        }
+
+        #exportBtn {
+            background: #e67e22;
+            color: white;
+        }
+
+        .result-section {
+            margin-top: 20px;
+        }
+
+        .result-section textarea {
+            background: #f8f9fa;
+            min-height: 80px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Jira ID Extractor</h1>
+        
+        <div class="drop-zone" id="dropZone">
+            Drag & Drop files here or click to upload<br>
+            (.txt, .xls, .xlsx, .csv, .csvx)
+        </div>
+        
+        <textarea id="inputText" placeholder="Or paste your text here..."></textarea>
+        
+        <div class="button-group">
+            <button id="extractBtn">Extract Jira IDs</button>
+            <button id="copyBtn">Copy to Clipboard</button>
+            <button id="exportBtn">Export to Excel</button>
+        </div>
+        
+        <div class="result-section">
+            <h3>Extracted Jira IDs:</h3>
+            <textarea id="resultText" readonly></textarea>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const inputText = document.getElementById('inputText');
+        const resultText = document.getElementById('resultText');
+        const extractBtn = document.getElementById('extractBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const exportBtn = document.getElementById('exportBtn');
+
+        // Drag and drop functionality
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        dropZone.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.txt,.xls,.xlsx,.csv,.csvx';
+            input.onchange = (e) => handleFiles(e.target.files);
+            input.click();
+        });
+
+        // Extract Jira IDs
+        extractBtn.addEventListener('click', () => {
+            const text = inputText.value;
+            const jiraPattern = /[A-Z]+-\d+/g;
+            const jiraIds = [...new Set(text.match(jiraPattern) || [])];
+            const result = jiraIds.join(', ');
+            resultText.value = result;
+        });
+
+        // Copy to clipboard
+        copyBtn.addEventListener('click', () => {
+            resultText.select();
+            document.execCommand('copy');
+            alert('Copied to clipboard!');
+        });
+
+        // Export to Excel
+        exportBtn.addEventListener('click', () => {
+            const jiraIds = resultText.value.split(', ').filter(id => id);
+            const jql = `issuekey in (${resultText.value})`;
+            
+            const worksheet = XLSX.utils.json_to_sheet([
+                { 'Jira IDs': resultText.value },
+                { 'JQL Query': jql }
+            ]);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Jira IDs');
+            XLSX.writeFile(workbook, 'jira_ids_export.xlsx');
+        });
+
+        // Handle file uploads
+        function handleFiles(files) {
+            const file = files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                inputText.value = e.target.result;
+            };
+
+            if (file.name.endsWith('.txt')) {
+                reader.readAsText(file);
+            } else if (file.name.endsWith('.csv') || file.name.endsWith('.csvx')) {
+                reader.readAsText(file);
+            } else if (file.name.endsWith('.xls') || file.name.endsWith('.xlsx')) {
+                reader.readAsArrayBuffer(file);
+                reader.onload = (e) => {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    inputText.value = XLSX.utils.sheet_to_csv(firstSheet);
+                };
+            }
+        }
+
+        // Include SheetJS library
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        document.body.appendChild(script);
+    </script>
+</body>
+</html>
