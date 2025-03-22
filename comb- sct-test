@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DefectDojo Engagements</title>
+    <style>
+        /* Enhanced Bootstrap-inspired CSS */
+        :root {
+            --bs-blue: #0d6efd;
+            --bs-success: #28a745;
+            --bs-warning: #ffc107;
+            --bs-danger: #dc3545;
+            --bs-gray-100: #f8f9fa;
+            --bs-gray-200: #e9ecef;
+            --bs-dark: #2c3e50;
+            --bs-light: #ffffff;
+            --highlight-green: #d4edda; /* Light green for highlight */
+        }
+        body {
+            background: linear-gradient(135deg, #6e48aa 0%, #9d50bb 100%);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container {
+            background: var(--bs-light);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: 90vw;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            border: 1px solid rgba(255,255,255,0.1);
+            position: relative;
+        }
+        h1, h2 {
+            color: var(--bs-dark);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+            font-weight: 600;
+        }
+        .text-center { text-align: center; }
+        .mb-4 { margin-bottom: 1.5rem; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .d-flex { display: flex; }
+        .justify-content-between { justify-content: space-between; }
+        .row { display: flex; flex-wrap: wrap; gap: 15px; }
+        .col-md-3, .col-md-2 { flex: 1; min-width: 150px; }
+        .col-md-2-4 { flex: 0 0 20%; min-width: 120px; } /* Adjusted for 5 filters */
+        .text-end { text-align: end; }
+        .w-100 { width: 100%; }
+
+        .form-control, .form-select, .version-input {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 8px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+            background: #f0f4f8;
+            font-size: 1rem;
+            transition: all 0.3s;
+            box-sizing: border-box;
+        }
+        .form-control:focus, .form-select:focus {
+            outline: none;
+            box-shadow: 0 0 5px rgba(13, 110, 253, 0.5);
+            background: #fff;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+        .btn-primary {
+            background: linear-gradient(45deg, var(--bs-blue), #5a9bff);
+            color: white;
+        }
+        .btn-secondary {
+            background: linear-gradient(45deg, #6c757d, #95a5a6);
+            color: white;
+        }
+        .btn-success {
+            background: linear-gradient(45deg, var(--bs-success), #5cb85c);
+            color: white;
+        }
+        .btn-danger {
+            background: linear-gradient(45deg, var(--bs-danger), #ff6b6b);
+            color: white;
+        }
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.875rem;
+        }
+        .btn-refresh, .btn-clear {
+            padding: 6px 12px; /* Match btn-sm size */
+            font-size: 0.875rem;
+        }
+        .btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+        .btn:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+        .alert {
+            position: absolute;
+            right: 25px;
+            top: 150px;
+            padding: 8px 15px;
+            border-radius: 8px;
+            display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 10;
+            max-width: 200px;
+            font-size: 0.9rem;
+        }
+        .alert-success {
+            background: linear-gradient(45deg, #d4edda, #e6f7e9);
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .alert-danger {
+            background: linear-gradient(45deg, #f8d7da, #fce4e6);
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+            max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            text-align: center;
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+
+        /* Tab Styles */
+        .tab-container {
+            display: flex;
+            border-bottom: 2px solid var(--bs-gray-200);
+            margin-bottom: 20px;
+        }
+        .tab {
+            flex: 1;
+            padding: 10px 15px;
+            text-align: center;
+            cursor: pointer;
+            background: var(--bs-gray-100);
+            color: var(--bs-dark);
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .tab:hover {
+            background: #e0e0e0;
+        }
+        .tab.active {
+            background: var(--bs-blue);
+            color: white;
+        }
+        .tab-content {
+            display: none;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        th, td {
+            border: 1px solid #e0e0e0;
+            padding: 10px;
+            text-align: center;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        th {
+            background: linear-gradient(45deg, var(--bs-gray-200), #f1f3f5);
+            color: var(--bs-dark);
+            font-weight: 600;
+            white-space: normal;
+            word-wrap: break-word;
+        }
+        td {
+            background: #fafafa;
+            transition: background 0.2s;
+        }
+        tr:hover td {
+            background: #f0f4f8;
+        }
+        .highlight-name {
+            background: var(--highlight-green) !important;
+        }
+        .clickable {
+            cursor: pointer;
+            text-decoration: underline;
+            color: var(--bs-blue);
+        }
+        .clickable:hover {
+            color: #0056b3;
+        }
+        /* Adjust column widths */
+        th:nth-child(1), td:nth-child(1) { min-width: 100px; } /* Created */
+        th:nth-child(2), td:nth-child(2) { min-width: 150px; } /* Name */
+        th:nth-child(3), td:nth-child(3) { min-width: 60px; } /* Total Key */
+        th:nth-child(4), td:nth-child(4) { min-width: 60px; } /* Completed */
+        th:nth-child(5), td:nth-child(5) { min-width: 50px; } /* Pending (Reduced from 60px) */
+        th:nth-child(6), td:nth-child(6) { min-width: 60px; } /* On Hold */
+        th:nth-child(7), td:nth-child(7) { min-width: 60px; } /* Rejected */
+        th:nth-child(8), td:nth-child(8) { min-width: 60px; } /* Doable Jira */
+        th:nth-child(9), td:nth-child(9) { min-width: 60px; } /* Non-Doable Jira */
+        th:nth-child(10), td:nth-child(10) { min-width: 120px; } /* Status (Analyst) */
+        th:nth-child(11), td:nth-child(11) { min-width: 120px; } /* Status (Mentor) */
+        th:nth-child(12), td:nth-child(12) { min-width: 120px; } /* Status (Lead) */
+        th:nth-child(13), td:nth-child(13) { min-width: 150px; } /* Lead */
+        th:nth-child(14), td:nth-child(14) { min-width: 120px; } /* Version */
+        th:nth-child(15), td:nth-child(15) { min-width: 120px; } /* Action */
+        /* Test Cases Modal Table Column Widths */
+        #testCasesTable th:nth-child(1), #testCasesTable td:nth-child(1) { min-width: 50px; } /* ID */
+        #testCasesTable th:nth-child(2), #testCasesTable td:nth-child(2) { min-width: 150px; } /* Title */
+        #testCasesTable th:nth-child(3), #testCasesTable td:nth-child(3) { min-width: 200px; } /* Description */
+        #testCasesTable th:nth-child(4), #testCasesTable td:nth-child(4) { min-width: 100px; } /* Version */
+        #testCasesTable th:nth-child(5), #testCasesTable td:nth-child(5) { min-width: 100px; } /* Status */
+        #testCasesTable th:nth-child(6), #testCasesTable td:nth-child(6) { min-width: 150px; } /* Assigned To */
+        #testCasesTable th:nth-child(7), #testCasesTable td:nth-child(7) { min-width: 100px; } /* Type */
+        #testCasesTable th:nth-child(8), #testCasesTable td:nth-child(8) { min-width: 100px; } /* Issue Type */
+        #testCasesTable th:nth-child(9), #testCasesTable td:nth-child(9) { min-width: 100px; } /* Jira Status */
+        .form-select {
+            padding: 8px 24px 8px 8px;
+            appearance: none;
+            background: #f0f4f8 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="5" viewBox="0 0 10 5"><path fill="%232c3e50" d="M0 0h10L5 5z"/></svg>') no-repeat right 8px center;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+            flex-shrink: 0;
+        }
+        .page-item {
+            padding: 8px 14px;
+            background: var(--bs-gray-100);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .page-item:hover, .page-item.active {
+            background: var(--bs-blue);
+            color: white;
+        }
+
+        /* Invisible CSRF */
+        #csrfToken, .csrf-label {
+            color: #ffffff;
+        }
+
+        /* Total Count */
+        .total-count {
+            font-size: 1.1rem;
+            color: var(--bs-dark);
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">Engagements Dashboard</h1>
+
+        <div class="d-flex justify-content-between mb-2">
+            <button class="btn btn-primary btn-refresh" onclick="fetchEngagements()" data-tooltip="Refresh">🔄</button>
+            <span class="csrf-label">CSRF Token: <strong id="csrfToken">Fetching...</strong></span>
+        </div>
+
+        <div class="total-count" id="totalCount">Total Engagements: 0</div>
+
+        <div class="tab-container">
+            <div class="tab active" onclick="switchTab('open')">Open SCT</div>
+            <div class="tab" onclick="switchTab('closed')">Closed SCT</div>
+        </div>
+
+        <div id="open-tab" class="tab-content active">
+            <div class="row mb-2">
+                <!-- Name Search -->
+                <div class="col-md-3">
+                    <input type="text" id="nameSearchOpen" class="form-control" placeholder="Search by name..." oninput="fetchEngagements()">
+                </div>
+                <!-- Lead Filter (Renamed to Select Name) -->
+                <div class="col-md-3">
+                    <select id="leadFilterOpen" class="form-select" onchange="fetchEngagements()">
+                        <option value="">Select Name</option>
+                    </select>
+                </div>
+                <!-- Date Filters -->
+                <div class="col-md-2">
+                    <input type="date" id="date1Open" class="form-control" onchange="fetchEngagements()">
+                </div>
+                <div class="col-md-2">
+                    <input type="date" id="date2Open" class="form-control" onchange="fetchEngagements()">
+                </div>
+                <!-- Clear Filters Button -->
+                <div class="col-md-2 text-end">
+                    <button class="btn btn-secondary btn-clear" onclick="clearFilters('open')" data-tooltip="Clear Filters">↺</button>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th rowspan="2">Created</th>
+                        <th rowspan="2">Name</th>
+                        <th rowspan="2">Total Key</th>
+                        <th colspan="4" class="text-center">Analysis Status</th>
+                        <th colspan="2" class="text-center">Jira Status</th>
+                        <th rowspan="2">Status (Analyst)</th>
+                        <th rowspan="2">Status (Mentor)</th>
+                        <th rowspan="2">Status (Lead)</th>
+                        <th rowspan="2">Lead</th>
+                        <th rowspan="2">Version</th>
+                        <th rowspan="2">Action</th>
+                    </tr>
+                    <tr>
+                        <th>Completed</th>
+                        <th>Pending</th>
+                        <th>On Hold</th>
+                        <th>Rejected</th>
+                        <th>Doable Jira</th>
+                        <th>Non-Doable Jira</th>
+                    </tr>
+                </thead>
+                <tbody id="engagementsTable"></tbody>
+            </table>
+
+            <div class="pagination" id="pagination"></div>
+        </div>
+
+        <div id="closed-tab" class="tab-content">
+            <div class="row mb-2">
+                <!-- Name Search -->
+                <div class="col-md-3">
+                    <input type="text" id="nameSearchClosed" class="form-control" placeholder="Search by name..." oninput="fetchEngagements()">
+                </div>
+                <!-- Lead Filter (Renamed to Select Name) -->
+                <div class="col-md-3">
+                    <select id="leadFilterClosed" class="form-select" onchange="fetchEngagements()">
+                        <option value="">Select Name</option>
+                    </select>
+                </div>
+                <!-- Date Filters -->
+                <div class="col-md-2">
+                    <input type="date" id="date1Closed" class="form-control" onchange="fetchEngagements()">
+                </div>
+                <div class="col-md-2">
+                    <input type="date" id="date2Closed" class="form-control" onchange="fetchEngagements()">
+                </div>
+                <!-- Clear Filters Button -->
+                <div class="col-md-2 text-end">
+                    <button class="btn btn-secondary btn-clear" onclick="clearFilters('closed')" data-tooltip="Clear Filters">↺</button>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th rowspan="2">Created</th>
+                        <th rowspan="2">Name</th>
+                        <th rowspan="2">Total Key</th>
+                        <th colspan="4" class="text-center">Analysis Status</th>
+                        <th colspan="2" class="text-center">Jira Status</th>
+                        <th rowspan="2">Status (Analyst)</th>
+                        <th rowspan="2">Status (Mentor)</th>
+                        <th rowspan="2">Status (Lead)</th>
+                        <th rowspan="2">Lead</th>
+                        <th rowspan="2">Version</th>
+                        <th rowspan="2">Action</th>
+                    </tr>
+                    <tr>
+                        <th>Completed</th>
+                        <th>Pending</th>
+                        <th>On Hold</th>
+                        <th>Rejected</th>
+                        <th>Doable Jira</th>
+                        <th>Non-Doable Jira</th>
+                    </tr>
+                </thead>
+                <tbody id="closedEngagementsTable"></tbody>
+            </table>
+
+            <div class="pagination" id="closedPagination"></div>
+        </div>
+
+        <div id="alertBox" class="alert"></div>
+        <div id="modalOverlay" class="modal-overlay"></div>
+        <div id="closeModal" class="modal">
+            <p id="modalContent"></p>
+        </div>
+        <div id="testCasesModal" class="modal">
+            <h2>Test Cases</h2>
+            <div class="row mb-2">
+                <div class="col-md-2-4">
+                    <select id="filterType" class="form-select" onchange="applyTestCasesFilters()">
+                        <option value="">Filter by Type</option>
+                    </select>
+                </div>
+                <div class="col-md-2-4">
+                    <select id="filterIssueType" class="form-select" onchange="applyTestCasesFilters()">
+                        <option value="">Filter by Issue Type</option>
+                    </select>
+                </div>
+                <div class="col-md-2-4">
+                    <select id="filterJiraStatus" class="form-select" onchange="applyTestCasesFilters()">
+                        <option value="">Filter by Jira Status</option>
+                    </select>
+                </div>
+                <div class="col-md-2-4">
+                    <select id="filterStatus" class="form-select" onchange="applyTestCasesFilters()">
+                        <option value="">Filter by Status</option>
+                    </select>
+                </div>
+                <div class="col-md-2-4">
+                    <select id="filterAssignedTo" class="form-select" onchange="applyTestCasesFilters()">
+                        <option value="">Filter by Assigned To</option>
+                    </select>
+                </div>
+            </div>
+            <div class="total-count" id="testCasesCount">Total Test Cases: 0</div>
+            <table id="testCasesTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Description</th>
+                        <th>Version</th>
+                        <th>Status</th>
+                        <th>Assigned To</th>
+                        <th>Type</th>
+                        <th>Issue Type</th>
+                        <th>Jira Status</th>
+                    </tr>
+                </thead>
+                <tbody id="testCasesTableBody"></tbody>
+            </table>
+            <div class="pagination" id="testCasesPagination"></div>
+            <button class="btn btn-secondary" onclick="closeTestCasesModal()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = "https://demo.defectdojo.org/api/v2";
+        let csrfToken = '';
+        let usersList = [];
+        let loggedInUserId = null;
+        let debounceTimeout;
+        const ROWS_PER_PAGE = 10;
+        const TEST_CASES_PER_PAGE = 5;
+        let currentPageOpen = 1;
+        let currentPageClosed = 1;
+        let currentTestCasesPage = 1;
+        let allEngagements = [];
+        let openEngagements = [];
+        let closedEngagements = [];
+        let testCases = [];
+        let filteredTestCases = [];
+        let environmentCache = {};
+        const EXCLUDED_USER_IDS = [1, 9, 6, 7, 8];
+
+        async function fetchCSRF() {
+            try {
+                const response = await fetch("https://demo.defectdojo.org/api/key-v2", { credentials: "include" });
+                const text = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, "text/html");
+                const csrfInput = doc.querySelector("input[name='csrfmiddlewaretoken']");
+                if (csrfInput) {
+                    csrfToken = csrfInput.value;
+                    document.getElementById("csrfToken").innerText = csrfToken;
+                } else {
+                    console.error("CSRF token not found.");
+                }
+            } catch (error) {
+                console.error("Error fetching CSRF Token:", error);
+            }
+        }
+
+        function showAlert(message, type, name = null) {
+            const alertBox = document.getElementById("alertBox");
+            alertBox.className = `alert alert-${type}`;
+            alertBox.innerHTML = type === "success" && name ? `${name} ${message}` : message;
+            alertBox.style.display = "block";
+            setTimeout(() => { alertBox.style.display = "none"; }, 3000);
+        }
+
+        function showModal(name, isReopen = false) {
+            const modal = document.getElementById("closeModal");
+            const overlay = document.getElementById("modalOverlay");
+            const modalContent = document.getElementById("modalContent");
+            modalContent.innerHTML = `${name} ${isReopen ? 'reopened' : 'closed'} successfully`;
+            modal.style.display = "block";
+            overlay.style.display = "block";
+            setTimeout(() => {
+                modal.style.display = "none";
+                overlay.style.display = "none";
+            }, 2000);
+        }
+
+        async function fetchLoggedInUser() {
+            try {
+                const response = await fetch(`${BASE_URL}/user_profile/`, { credentials: "include" });
+                const data = await response.json();
+                loggedInUserId = data.id;
+                return loggedInUserId;
+            } catch (error) {
+                console.error("Error fetching logged-in user:", error);
+                return null;
+            }
+        }
+
+        async function fetchUsers() {
+            try {
+                const loggedInUserId = await fetchLoggedInUser();
+                const response = await fetch(`${BASE_URL}/users/?limit=100`);
+                const data = await response.json();
+                usersList = data.results || [];
+
+                const leadFilterOpen = document.getElementById("leadFilterOpen");
+                const leadFilterClosed = document.getElementById("leadFilterClosed");
+                if (leadFilterOpen && leadFilterClosed) {
+                    [leadFilterOpen, leadFilterClosed].forEach(leadFilter => {
+                        leadFilter.innerHTML = `<option value="">Select Name</option>`;
+                        usersList.forEach(user => {
+                            const option = document.createElement("option");
+                            option.value = user.id;
+                            option.textContent = `${user.first_name} ${user.last_name}`;
+                            leadFilter.appendChild(option);
+                        });
+                        if (loggedInUserId) leadFilter.value = loggedInUserId;
+                    });
+                }
+                fetchEngagements();
+            } catch (error) {
+                console.error("Error fetching users:", error);
+            }
+        }
+
+        async function fetchEnvironmentName(envId) {
+            if (!envId) return 'N/A';
+            if (environmentCache[envId]) return environmentCache[envId];
+
+            try {
+                const response = await fetch(`${BASE_URL}/development_environments/${envId}/`);
+                const data = await response.json();
+                environmentCache[envId] = data.name || 'Unknown';
+                return environmentCache[envId];
+            } catch (error) {
+                console.error(`Error fetching environment ${envId}:`, error);
+                environmentCache[envId] = 'Error';
+                return 'Error';
+            }
+        }
+
+        function clearFilters(tab) {
+            if (tab === 'open') {
+                document.getElementById("nameSearchOpen").value = "";
+                document.getElementById("leadFilterOpen").value = "";
+                document.getElementById("date1Open").value = "";
+                document.getElementById("date2Open").value = "";
+            } else {
+                document.getElementById("nameSearchClosed").value = "";
+                document.getElementById("leadFilterClosed").value = "";
+                document.getElementById("date1Closed").value = "";
+                document.getElementById("date2Closed").value = "";
+            }
+            fetchEngagements();
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+            document.getElementById(`${tab}-tab`).classList.add('active');
+            if (tab === 'open') {
+                renderTableOpen(currentPageOpen);
+            } else {
+                renderTableClosed(currentPageClosed);
+            }
+            updateTotalCount();
+        }
+
+        function updateTotalCount() {
+            const activeTab = document.querySelector('.tab.active').textContent.trim();
+            const count = activeTab === 'Open SCT' ? openEngagements.length : closedEngagements.length;
+            document.getElementById("totalCount").textContent = `Total Engagements: ${count}`;
+        }
+
+        function renderTableOpen(page) {
+            const tableBody = document.getElementById("engagementsTable");
+            tableBody.innerHTML = "";
+            const start = (page - 1) * ROWS_PER_PAGE;
+            const end = start + ROWS_PER_PAGE;
+            const paginatedEngagements = openEngagements.slice(start, end);
+
+            requestAnimationFrame(() => {
+                paginatedEngagements.forEach((engagement, index) => {
+                    const createdDate = engagement.created.split("T")[0];
+                    const testCases = engagement.testCases || [];
+                    const userTestCases = testCases.filter(tc => tc.lead == loggedInUserId && !EXCLUDED_USER_IDS.includes(loggedInUserId));
+
+                    const totalJiras = userTestCases.length;
+                    const completed = userTestCases.filter(tc => tc.branch_tag === "Completed").length;
+                    const pending = userTestCases.filter(tc => tc.branch_tag === "Pending").length;
+                    const onHold = userTestCases.filter(tc => tc.branch_tag === "On Hold").length;
+                    const rejected = userTestCases.filter(tc => tc.branch_tag === "Rejected").length;
+                    const doableJiras = userTestCases.filter(tc => tc.build_id === "Closed" || tc.build_id === "To Do").length;
+                    const nonDoableJiras = totalJiras - doableJiras;
+
+                    const row = document.createElement("tr");
+                    row.dataset.id = engagement.id;
+                    const isLead = engagement.lead == loggedInUserId;
+                    row.innerHTML = `
+                        <td>${createdDate}</td>
+                        <td class="${totalJiras === (completed + rejected) ? 'highlight-name' : ''}">${engagement.name}</td>
+                        <td class="clickable" onclick="showTestCases(${engagement.id}, 'all')">${totalJiras}</td>
+                        <td class="clickable" onclick="showTestCases(${engagement.id}, 'Completed')">${completed}</td>
+                        <td class="clickable" onclick="showTestCases(${engagement.id}, 'Pending')">${pending}</td>
+                        <td class="clickable" onclick="showTestCases(${engagement.id}, 'On Hold')">${onHold}</td>
+                        <td class="clickable" onclick="showTestCases(${engagement.id}, 'Rejected')">${rejected}</td>
+                        <td>${doableJiras}</td>
+                        <td>${nonDoableJiras}</td>
+                        <td>${createDropdown(engagement.status, !isLead)}</td>
+                        <td>${createDropdown(engagement.commit_hash, !isLead)}</td>
+                        <td>${createDropdown(engagement.build_id, !isLead)}</td>
+                        <td>${createLeadDropdown(engagement.lead, !isLead)}</td>
+                        <td><input type="text" class="version-input" value="${engagement.version || ''}" data-id="${engagement.id}" ${!isLead ? 'disabled' : ''}></td>
+                        <td>
+                            <button class="btn btn-primary btn-sm" onclick="updateEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', '${engagement.product}', '${engagement.lead}')">Save</button>
+                            <button class="btn btn-danger btn-sm close-btn" data-id="${engagement.id}" disabled onclick="closeEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', '${engagement.product}', '${engagement.lead}')">Close</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+
+                    // Real-time saving for dropdowns and version input
+                    const analystStatus = row.querySelector("td:nth-child(10) select");
+                    const mentorStatus = row.querySelector("td:nth-child(11) select");
+                    const leadStatus = row.querySelector("td:nth-child(12) select");
+                    const versionInput = row.querySelector(".version-input");
+                    const closeBtn = row.querySelector(".close-btn");
+
+                    function updateCloseButton() {
+                        const allCompleted = analystStatus.value === "Completed" && 
+                                            mentorStatus.value === "Completed" && 
+                                            leadStatus.value === "Completed";
+                        closeBtn.disabled = !allCompleted || !isLead;
+                    }
+
+                    // Save on change and alert on blur
+                    [analystStatus, mentorStatus, leadStatus, versionInput].forEach(element => {
+                        element.addEventListener("change", () => {
+                            if (isLead) {
+                                updateEngagement(engagement.id, engagement.name, engagement.target_start, engagement.target_end, engagement.product, engagement.lead);
+                                updateCloseButton();
+                            }
+                        });
+                        element.addEventListener("blur", () => {
+                            if (isLead) showAlert("saved", "success", engagement.name);
+                        });
+                    });
+
+                    updateCloseButton(); // Initial check
+                });
+            });
+
+            renderPagination('open');
+        }
+
+        function renderTableClosed(page) {
+            const tableBody = document.getElementById("closedEngagementsTable");
+            tableBody.innerHTML = "";
+            const start = (page - 1) * ROWS_PER_PAGE;
+            const end = start + ROWS_PER_PAGE;
+            const paginatedEngagements = closedEngagements.slice(start, end);
+
+            requestAnimationFrame(() => {
+                paginatedEngagements.forEach(engagement => {
+                    const createdDate = engagement.created.split("T")[0];
+                    const testCases = engagement.testCases || [];
+                    const userTestCases = testCases.filter(tc => tc.lead == loggedInUserId && !EXCLUDED_USER_IDS.includes(loggedInUserId));
+
+                    const totalJiras = userTestCases.length;
+                    const completed = userTestCases.filter(tc => tc.branch_tag === "Completed").length;
+                    const pending = userTestCases.filter(tc => tc.branch_tag === "Pending").length;
+                    const onHold = userTestCases.filter(tc => tc.branch_tag === "On Hold").length;
+                    const rejected = userTestCases.filter(tc => tc.branch_tag === "Rejected").length;
+                    const doableJiras = userTestCases.filter(tc => tc.build_id === "Closed" || tc.build_id === "To Do").length;
+                    const nonDoableJiras = totalJiras - doableJiras;
+
+                    const row = document.createElement("tr");
+                    row.dataset.id = engagement.id;
+                    row.innerHTML = `
+                        <td>${createdDate}</td>
+                        <td class="${totalJiras === (completed + rejected) ? 'highlight-name' : ''}">${engagement.name}</td>
+                        <td class="clickable" onclick="showTestCases(${engagement.id}, 'all')">${totalJiras}</td>
+                        <td class="clickable" onclick="showTestCases(${engagement.id}, 'Completed')">${completed}</td>
+                        <td class="clickable" onclick="showTestCases(${engagement.id}, 'Pending')">${pending}</td>
+                        <td class="clickable" onclick="showTestCases(${engagement.id}, 'On Hold')">${onHold}</td>
+                        <td class="clickable" onclick="showTestCases(${engagement.id}, 'Rejected')">${rejected}</td>
+                        <td>${doableJiras}</td>
+                        <td>${nonDoableJiras}</td>
+                        <td>${engagement.status}</td>
+                        <td>${engagement.commit_hash}</td>
+                        <td>${engagement.build_id}</td>
+                        <td>${usersList.find(user => user.id == engagement.lead)?.first_name || ''} ${usersList.find(user => user.id == engagement.lead)?.last_name || ''}</td>
+                        <td>${engagement.version || ''}</td>
+                        <td><button class="btn btn-success btn-sm" onclick="reopenEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', '${engagement.product}', '${engagement.lead}')">Reopen</button></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            });
+
+            renderPagination('closed');
+        }
+
+        function renderPagination(tab) {
+            const totalPages = Math.ceil((tab === 'open' ? openEngagements : closedEngagements).length / ROWS_PER_PAGE);
+            const pagination = document.getElementById(tab === 'open' ? 'pagination' : 'closedPagination');
+            pagination.innerHTML = "";
+
+            // First
+            const firstItem = document.createElement("div");
+            firstItem.className = `page-item ${(tab === 'open' ? currentPageOpen : currentPageClosed) === 1 ? 'active' : ''}`;
+            firstItem.textContent = "First";
+            firstItem.onclick = () => {
+                if ((tab === 'open' ? currentPageOpen : currentPageClosed) !== 1) {
+                    if (tab === 'open') currentPageOpen = 1; else currentPageClosed = 1;
+                    tab === 'open' ? renderTableOpen(currentPageOpen) : renderTableClosed(currentPageClosed);
+                    updatePaginationHighlight(tab);
+                }
+            };
+            pagination.appendChild(firstItem);
+
+            // Previous
+            const prevItem = document.createElement("div");
+            prevItem.className = `page-item`;
+            prevItem.textContent = "Previous";
+            prevItem.onclick = () => {
+                if ((tab === 'open' ? currentPageOpen : currentPageClosed) > 1) {
+                    if (tab === 'open') currentPageOpen--; else currentPageClosed--;
+                    tab === 'open' ? renderTableOpen(currentPageOpen) : renderTableClosed(currentPageClosed);
+                    updatePaginationHighlight(tab);
+                }
+            };
+            pagination.appendChild(prevItem);
+
+            // Next
+            const nextItem = document.createElement("div");
+            nextItem.className = `page-item`;
+            nextItem.textContent = "Next";
+            nextItem.onclick = () => {
+                if ((tab === 'open' ? currentPageOpen : currentPageClosed) < totalPages) {
+                    if (tab === 'open') currentPageOpen++; else currentPageClosed++;
+                    tab === 'open' ? renderTableOpen(currentPageOpen) : renderTableClosed(currentPageClosed);
+                    updatePaginationHighlight(tab);
+                }
+            };
+            pagination.appendChild(nextItem);
+
+            // Last
+            const lastItem = document.createElement("div");
+            lastItem.className = `page-item ${(tab === 'open' ? currentPageOpen : currentPageClosed) === totalPages ? 'active' : ''}`;
+            lastItem.textContent = "Last";
+            lastItem.onclick = () => {
+                if ((tab === 'open' ? currentPageOpen : currentPageClosed) !== totalPages) {
+                    if (tab === 'open') currentPageOpen = totalPages; else currentPageClosed = totalPages;
+                    tab === 'open' ? renderTableOpen(currentPageOpen) : renderTableClosed(currentPageClosed);
+                    updatePaginationHighlight(tab);
+                }
+            };
+            pagination.appendChild(lastItem);
+        }
+
+        function updatePaginationHighlight(tab) {
+            const totalPages = Math.ceil((tab === 'open' ? openEngagements : closedEngagements).length / ROWS_PER_PAGE);
+            document.querySelectorAll(`#${tab === 'open' ? 'pagination' : 'closedPagination'} .page-item`).forEach(item => {
+                item.classList.remove('active');
+                if (item.textContent === "First" && (tab === 'open' ? currentPageOpen : currentPageClosed) === 1) item.classList.add('active');
+                if (item.textContent === "Last" && (tab === 'open' ? currentPageOpen : currentPageClosed) === totalPages) item.classList.add('active');
+            });
+        }
+
+        async function fetchEngagements() {
+            try {
+                if (debounceTimeout) clearTimeout(debounceTimeout);
+
+                debounceTimeout = setTimeout(async () => {
+                    const response = await fetch(`${BASE_URL}/engagements/?tags=crm&o=-created`);
+                    const data = await response.json();
+                    if (!data.results) return;
+
+                    const date1Open = document.getElementById("date1Open").value;
+                    const date2Open = document.getElementById("date2Open").value;
+                    const selectedLeadOpen = document.getElementById("leadFilterOpen").value;
+                    const nameSearchOpen = document.getElementById("nameSearchOpen").value.toLowerCase().trim();
+
+                    const date1Closed = document.getElementById("date1Closed").value;
+                    const date2Closed = document.getElementById("date2Closed").value;
+                    const selectedLeadClosed = document.getElementById("leadFilterClosed").value;
+                    const nameSearchClosed = document.getElementById("nameSearchClosed").value.toLowerCase().trim();
+
+                    allEngagements = data.results.filter(engagement => {
+                        const createdDate = engagement.created ? engagement.created.split("T")[0] : "";
+                        if (!createdDate || new Date(createdDate) <= new Date("2025-02-28")) return false;
+                        return true;
+                    });
+
+                    const testCasesResults = await Promise.all(
+                        allEngagements.map(engagement => fetchTestCases(engagement.id))
+                    );
+
+                    allEngagements = allEngagements.map((engagement, index) => ({
+                        ...engagement,
+                        testCases: testCasesResults[index]
+                    }));
+
+                    openEngagements = allEngagements.filter(engagement => {
+                        const isCompleted = engagement.status === "Completed" && 
+                                           engagement.commit_hash === "Completed" && 
+                                           engagement.build_id === "Completed";
+                        return (!isCompleted || engagement.active !== false) && engagement.active === true;
+                    }).filter(engagement => {
+                        const createdDate = engagement.created.split("T")[0];
+                        const engagementName = engagement.name.toLowerCase();
+                        if (date1Open && createdDate < date1Open) return false;
+                        if (date2Open && createdDate > date2Open) return false;
+                        if (selectedLeadOpen && engagement.lead != selectedLeadOpen) return false;
+                        if (nameSearchOpen && !engagementName.includes(nameSearchOpen)) return false;
+                        return true;
+                    });
+
+                    closedEngagements = allEngagements.filter(engagement => {
+                        const isCompleted = engagement.status === "Completed" && 
+                                           engagement.commit_hash === "Completed" && 
+                                           engagement.build_id === "Completed";
+                        return (isCompleted && engagement.active === false) && engagement.active === false;
+                    }).filter(engagement => {
+                        const createdDate = engagement.created.split("T")[0];
+                        const engagementName = engagement.name.toLowerCase();
+                        if (date1Closed && createdDate < date1Closed) return false;
+                        if (date2Closed && createdDate > date2Closed) return false;
+                        if (selectedLeadClosed && engagement.lead != selectedLeadClosed) return false;
+                        if (nameSearchClosed && !engagementName.includes(nameSearchClosed)) return false;
+                        return true;
+                    });
+
+                    currentPageOpen = 1;
+                    currentPageClosed = 1;
+                    renderTableOpen(currentPageOpen);
+                    renderTableClosed(currentPageClosed);
+                    updateTotalCount();
+                }, 500);
+            } catch (error) {
+                console.error("Error fetching engagements:", error);
+                showAlert("Error fetching engagements!", "danger");
+            }
+        }
+
+        async function fetchTestCases(engagementId) {
+            try {
+                const response = await fetch(`${BASE_URL}/tests/?engagement=${engagementId}&tags=crm_jira`);
+                const data = await response.json();
+                return data.results || [];
+            } catch (error) {
+                console.error("Error fetching test cases:", error);
+                return [];
+            }
+        }
+
+        async function showTestCases(engagementId, filter) {
+            try {
+                const response = await fetch(`${BASE_URL}/tests/?engagement=${engagementId}`);
+                const data = await response.json();
+                testCases = (data.results || []).filter(tc => tc.lead == loggedInUserId && !EXCLUDED_USER_IDS.includes(loggedInUserId));
+
+                if (filter !== 'all') {
+                    testCases = testCases.filter(tc => tc.branch_tag === filter);
+                }
+
+                // Fetch environment names and set lead names for all test cases
+                await Promise.all(testCases.map(async tc => {
+                    tc.environmentName = await fetchEnvironmentName(tc.environment);
+                    const lead = usersList.find(user => user.id == tc.lead);
+                    tc.leadName = lead ? `${lead.first_name} ${lead.last_name}` : 'Unassigned';
+                }));
+
+                filteredTestCases = [...testCases];
+                currentTestCasesPage = 1;
+                populateTestCasesFilters();
+                renderTestCasesTable(currentTestCasesPage);
+
+                const modal = document.getElementById("testCasesModal");
+                const overlay = document.getElementById("modalOverlay");
+                modal.style.display = "block";
+                overlay.style.display = "block";
+            } catch (error) {
+                console.error("Error fetching test cases for modal:", error);
+                showAlert("Error loading test cases!", "danger");
+            }
+        }
+
+        function populateTestCasesFilters() {
+            const typeFilter = document.getElementById("filterType");
+            const issueTypeFilter = document.getElementById("filterIssueType");
+            const jiraStatusFilter = document.getElementById("filterJiraStatus");
+            const statusFilter = document.getElementById("filterStatus");
+            const assignedToFilter = document.getElementById("filterAssignedTo");
+
+            const uniqueTypes = [...new Set(testCases.map(tc => tc.environmentName || 'N/A'))].sort();
+            const uniqueIssueTypes = [...new Set(testCases.map(tc => tc.commit_hash || 'N/A'))].sort();
+            const uniqueJiraStatuses = [...new Set(testCases.map(tc => tc.build_id || 'N/A'))].sort();
+            const uniqueStatuses = [...new Set(testCases.map(tc => tc.branch_tag || 'N/A'))].sort();
+            const uniqueAssignedTos = [...new Set(testCases.map(tc => tc.leadName || 'Unassigned'))].sort();
+
+            typeFilter.innerHTML = '<option value="">Filter by Type</option>' + uniqueTypes.map(val => `<option value="${val}">${val}</option>`).join('');
+            issueTypeFilter.innerHTML = '<option value="">Filter by Issue Type</option>' + uniqueIssueTypes.map(val => `<option value="${val}">${val}</option>`).join('');
+            jiraStatusFilter.innerHTML = '<option value="">Filter by Jira Status</option>' + uniqueJiraStatuses.map(val => `<option value="${val}">${val}</option>`).join('');
+            statusFilter.innerHTML = '<option value="">Filter by Status</option>' + uniqueStatuses.map(val => `<option value="${val}">${val}</option>`).join('');
+            assignedToFilter.innerHTML = '<option value="">Filter by Assigned To</option>' + uniqueAssignedTos.map(val => `<option value="${val}">${val}</option>`).join('');
+        }
+
+        function applyTestCasesFilters() {
+            const typeFilter = document.getElementById("filterType").value;
+            const issueTypeFilter = document.getElementById("filterIssueType").value;
+            const jiraStatusFilter = document.getElementById("filterJiraStatus").value;
+            const statusFilter = document.getElementById("filterStatus").value;
+            const assignedToFilter = document.getElementById("filterAssignedTo").value;
+
+            filteredTestCases = testCases.filter(tc => {
+                return (!typeFilter || tc.environmentName === typeFilter) &&
+                       (!issueTypeFilter || tc.commit_hash === issueTypeFilter) &&
+                       (!jiraStatusFilter || tc.build_id === jiraStatusFilter) &&
+                       (!statusFilter || tc.branch_tag === statusFilter) &&
+                       (!assignedToFilter || tc.leadName === assignedToFilter);
+            });
+
+            currentTestCasesPage = 1;
+            renderTestCasesTable(currentTestCasesPage);
+        }
+
+        function renderTestCasesTable(page) {
+            const tableBody = document.getElementById("testCasesTableBody");
+            tableBody.innerHTML = "";
+            const start = (page - 1) * TEST_CASES_PER_PAGE;
+            const end = start + TEST_CASES_PER_PAGE;
+            const paginatedTestCases = filteredTestCases.slice(start, end);
+
+            document.getElementById("testCasesCount").textContent = `Total Test Cases: ${filteredTestCases.length}`;
+
+            requestAnimationFrame(() => {
+                paginatedTestCases.forEach(tc => {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${tc.id}</td>
+                        <td>${tc.title || ''}</td>
+                        <td>${tc.description || ''}</td>
+                        <td>${tc.version || ''}</td>
+                        <td>${tc.branch_tag || 'N/A'}</td>
+                        <td>${tc.leadName}</td>
+                        <td>${tc.environmentName || 'N/A'}</td>
+                        <td>${tc.commit_hash || 'N/A'}</td>
+                        <td>${tc.build_id || 'N/A'}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            });
+
+            renderTestCasesPagination();
+        }
+
+        function renderTestCasesPagination() {
+            const totalPages = Math.ceil(filteredTestCases.length / TEST_CASES_PER_PAGE);
+            const pagination = document.getElementById("testCasesPagination");
+            pagination.innerHTML = "";
+
+            // First
+            const firstItem = document.createElement("div");
+            firstItem.className = `page-item ${currentTestCasesPage === 1 ? 'active' : ''}`;
+            firstItem.textContent = "First";
+            firstItem.onclick = () => {
+                if (currentTestCasesPage !== 1) {
+                    currentTestCasesPage = 1;
+                    renderTestCasesTable(currentTestCasesPage);
+                    updateTestCasesPaginationHighlight();
+                }
+            };
+            pagination.appendChild(firstItem);
+
+            // Previous
+            const prevItem = document.createElement("div");
+            prevItem.className = "page-item";
+            prevItem.textContent = "Previous";
+            prevItem.onclick = () => {
+                if (currentTestCasesPage > 1) {
+                    currentTestCasesPage--;
+                    renderTestCasesTable(currentTestCasesPage);
+                    updateTestCasesPaginationHighlight();
+                }
+            };
+            pagination.appendChild(prevItem);
+
+            // Next
+            const nextItem = document.createElement("div");
+            nextItem.className = "page-item";
+            nextItem.textContent = "Next";
+            nextItem.onclick = () => {
+                if (currentTestCasesPage < totalPages) {
+                    currentTestCasesPage++;
+                    renderTestCasesTable(currentTestCasesPage);
+                    updateTestCasesPaginationHighlight();
+                }
+            };
+            pagination.appendChild(nextItem);
+
+            // Last
+            const lastItem = document.createElement("div");
+            lastItem.className = `page-item ${currentTestCasesPage === totalPages ? 'active' : ''}`;
+            lastItem.textContent = "Last";
+            lastItem.onclick = () => {
+                if (currentTestCasesPage !== totalPages) {
+                    currentTestCasesPage = totalPages;
+                    renderTestCasesTable(currentTestCasesPage);
+                    updateTestCasesPaginationHighlight();
+                }
+            };
+            pagination.appendChild(lastItem);
+        }
+
+        function updateTestCasesPaginationHighlight() {
+            const totalPages = Math.ceil(filteredTestCases.length / TEST_CASES_PER_PAGE);
+            document.querySelectorAll("#testCasesPagination .page-item").forEach(item => {
+                item.classList.remove('active');
+                if (item.textContent === "First" && currentTestCasesPage === 1) item.classList.add('active');
+                if (item.textContent === "Last" && currentTestCasesPage === totalPages) item.classList.add('active');
+            });
+        }
+
+        function closeTestCasesModal() {
+            const modal = document.getElementById("testCasesModal");
+            const overlay = document.getElementById("modalOverlay");
+            modal.style.display = "none";
+            overlay.style.display = "none";
+        }
+
+        function createDropdown(selectedValue, disabled = false) {
+            const options = ["Not Started", "On Hold", "Completed"];
+            let dropdown = `<select class="form-select status-dropdown" ${disabled ? 'disabled' : ''}>`;
+            options.forEach(option => {
+                dropdown += `<option value="${option}" ${option === selectedValue ? "selected" : ""}>${option}</option>`;
+            });
+            dropdown += `</select>`;
+            return dropdown;
+        }
+
+        function createLeadDropdown(selectedLeadId, disabled = false) {
+            let dropdown = `<select class="form-select lead-dropdown" ${disabled ? 'disabled' : ''}>`;
+            usersList.forEach(user => {
+                dropdown += `<option value="${user.id}" ${user.id == selectedLeadId ? "selected" : ""}>${user.first_name} ${user.last_name}</option>`;
+            });
+            dropdown += `</select>`;
+            return dropdown;
+        }
+
+        async function updateEngagement(engagementId, name, targetStart, targetEnd, product, lead) {
+            try {
+                const row = document.querySelector(`tr[data-id="${engagementId}"]`);
+                if (!row || !document.getElementById("open-tab").classList.contains("active")) {
+                    console.error("Update called outside Open SCT tab or row not found");
+                    return;
+                }
+
+                const status = row.querySelector("td:nth-child(10) select").value;
+                const commitHash = row.querySelector("td:nth-child(11) select").value;
+                const buildId = row.querySelector("td:nth-child(12) select").value;
+                const version = row.querySelector(".version-input").value;
+                const updatedLead = row.querySelector(".lead-dropdown").value;
+
+                const isCompleted = status === "Completed" && commitHash === "Completed" && buildId === "Completed";
+                console.log(`Engagement ${engagementId} - Status: ${status}, Commit Hash: ${commitHash}, Build ID: ${buildId}, Is Completed: ${isCompleted}`);
+
+                const payload = {
+                    id: engagementId,
+                    name,
+                    target_start: targetStart,
+                    target_end: targetEnd,
+                    product,
+                    lead: updatedLead,
+                    status,
+                    commit_hash: commitHash,
+                    build_id: buildId,
+                    version,
+                    active: isCompleted ? false : true
+                };
+
+                console.log("Sending payload:", payload);
+
+                const response = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+                    body: JSON.stringify(payload),
+                    credentials: "include"
+                });
+
+                if (response.ok) {
+                    // Check if called from Save button (event exists)
+                    if (event && event.type === "click") {
+                        showAlert("saved successfully", "success", name);
+                    }
+                } else {
+                    showAlert("Failed to update engagement!", "danger");
+                }
+
+                fetchEngagements();
+            } catch (error) {
+                showAlert("Error updating engagement!", "danger");
+                console.error("Error:", error);
+            }
+        }
+
+        async function closeEngagement(engagementId, name, targetStart, targetEnd, product, lead) {
+            try {
+                // Execute URL in background
+                fetch(`https://demo.defectdojo.org/engagement/${engagementId}/close`, {
+                    method: "GET",
+                    credentials: "include"
+                }).catch(error => console.error("Background URL fetch failed:", error));
+
+                // Show modal with success message
+                showModal(name);
+
+                // First, GET the current engagement data
+                const getResponse = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include"
+                });
+
+                if (!getResponse.ok) {
+                    showAlert("Failed to fetch engagement data!", "danger");
+                    return;
+                }
+
+                const engagementData = await getResponse.json();
+
+                // Prepare PUT payload with mandatory parameters
+                const payload = {
+                    id: engagementId,
+                    name: engagementData.name,
+                    target_start: engagementData.target_start,
+                    target_end: engagementData.target_end,
+                    active: false,
+                    status: engagementData.status || "Completed",
+                    lead: engagementData.lead,
+                    product: engagementData.product
+                };
+
+                console.log("Closing payload:", payload);
+
+                // Then, PUT to close the engagement
+                const aputResponse = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+                    body: JSON.stringify(payload),
+                    credentials: "include"
+                });
+
+                if (putResponse.ok) {
+                    fetchEngagements();
+                } else {
+                    showAlert("Failed to close engagement!", "danger");
+                }
+            } catch (error) {
+                showAlert("Error closing engagement!", "danger");
+                console.error("Error:", error);
+            }
+        }
+
+        async function reopenEngagement(engagementId, name, targetStart, targetEnd, product, lead) {
+            try {
+                // Execute URL in background
+                fetch(`https://demo.defectdojo.org/engagement/${engagementId}/reopen`, {
+                    method: "GET",
+                    credentials: "include"
+                }).catch(error => console.error("Background URL fetch failed:", error));
+
+                // Show modal with reopen success message
+                showModal(name, true);
+
+                // First, GET the current engagement data
+                const getResponse = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include"
+                });
+
+                if (!getResponse.ok) {
+                    showAlert("Failed to fetch engagement data!", "danger");
+                    return;
+                }
+
+                const engagementData = await getResponse.json();
+
+                // Prepare PUT payload with mandatory parameters
+                const payload = {
+                    id: engagementId,
+                    name: engagementData.name,
+                    target_start: engagementData.target_start,
+                    target_end: engagementData.target_end,
+                    active: true,
+                    status: "Not Started",
+                    lead: engagementData.lead,
+                    product: engagementData.product
+                };
+
+                console.log("Reopening payload:", payload);
+
+                // Then, PUT to reopen the engagement
+                const putResponse = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+                    body: JSON.stringify(payload),
+                    credentials: "include"
+                });
+
+                if (putResponse.ok) {
+                    fetchEngagements();
+                } else {
+                    showAlert("Failed to reopen engagement!", "danger");
+                }
+            } catch (error) {
+                showAlert("Error reopening engagement!", "danger");
+                console.error("Error:", error);
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            await fetchCSRF();
+            await fetchUsers();
+            await fetchEngagements();
+        });
+    </script>
+</body>
+</html>
