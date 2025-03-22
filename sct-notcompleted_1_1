@@ -741,7 +741,7 @@
                     commit_hash: commitHash,
                     build_id: buildId,
                     version,
-                    active: isCompleted ? false : true // Set active based on completion status
+                    active: isCompleted ? false : true // Set active: false if all three are "Completed" in Open SCT
                 };
 
                 const response = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
