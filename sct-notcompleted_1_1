@@ -446,11 +446,11 @@
             setTimeout(() => { alertBox.style.display = "none"; }, 3000);
         }
 
-        function showModal(name) {
+        function showModal(name, isReopen = false) {
             const modal = document.getElementById("closeModal");
             const overlay = document.getElementById("modalOverlay");
             const modalContent = document.getElementById("modalContent");
-            modalContent.innerHTML = `${name} closed successfully`;
+            modalContent.innerHTML = `${name} ${isReopen ? 'reopened' : 'closed'} successfully`;
             modal.style.display = "block";
             overlay.style.display = "block";
             setTimeout(() => {
@@ -919,6 +919,15 @@
 
         async function reopenEngagement(engagementId, name, targetStart, targetEnd, product, lead) {
             try {
+                // Execute URL in background
+                fetch(`https://demo.defectdojo.org/engagement/${engagementId}/reopen`, {
+                    method: "GET",
+                    credentials: "include"
+                }).catch(error => console.error("Background URL fetch failed:", error));
+
+                // Show modal with reopen success message
+                showModal(name, true);
+
                 // First, GET the current engagement data
                 const getResponse = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
                     method: "GET",
@@ -956,7 +965,6 @@
                 });
 
                 if (putResponse.ok) {
-                    showAlert(`${name} reopened`, "success", name);
                     fetchEngagements();
                 } else {
                     showAlert("Failed to reopen engagement!", "danger");
