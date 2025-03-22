@@ -656,11 +656,12 @@
                         testCases: testCasesResults[index]
                     }));
 
-                    openEngagements = allEngagements.filter(engagement => 
-                        !engagement.active || !(engagement.status === "Completed" && 
-                          engagement.commit_hash === "Completed" && 
-                          engagement.build_id === "Completed")
-                    ).filter(engagement => {
+                    openEngagements = allEngagements.filter(engagement => {
+                        const isCompleted = engagement.status === "Completed" && 
+                                           engagement.commit_hash === "Completed" && 
+                                           engagement.build_id === "Completed";
+                        return !isCompleted || engagement.active !== false;
+                    }).filter(engagement => {
                         const createdDate = engagement.created.split("T")[0];
                         const engagementName = engagement.name.toLowerCase();
                         if (date1 && createdDate < date1) return false;
@@ -670,12 +671,12 @@
                         return true;
                     });
 
-                    closedEngagements = allEngagements.filter(engagement => 
-                        engagement.active === false && 
-                        engagement.status === "Completed" && 
-                        engagement.commit_hash === "Completed" && 
-                        engagement.build_id === "Completed"
-                    );
+                    closedEngagements = allEngagements.filter(engagement => {
+                        const isCompleted = engagement.status === "Completed" && 
+                                           engagement.commit_hash === "Completed" && 
+                                           engagement.build_id === "Completed";
+                        return isCompleted && engagement.active === false;
+                    });
 
                     currentPageOpen = 1;
                     currentPageClosed = 1;
@@ -728,6 +729,7 @@
                 const version = row.querySelector(".version-input").value;
                 const updatedLead = row.querySelector(".lead-dropdown").value;
 
+                const isCompleted = status === "Completed" && commitHash === "Completed" && buildId === "Completed";
                 const payload = {
                     id: engagementId,
                     name,
@@ -739,7 +741,7 @@
                     commit_hash: commitHash,
                     build_id: buildId,
                     version,
-                    active: true // Default to active unless closed
+                    active: isCompleted ? false : true // Set active based on completion status
                 };
 
                 const response = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
@@ -749,21 +751,14 @@
                     credentials: "include"
                 });
 
-                if (response.ok && status === "Completed" && commitHash === "Completed" && buildId === "Completed") {
-                    const closePayload = { active: false };
-                    const closeResponse = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
-                        body: JSON.stringify(closePayload),
-                        credentials: "include"
-                    });
-                    if (closeResponse.ok) {
+                if (response.ok) {
+                    if (isCompleted) {
                         showAlert(`${name} closed and saved`, "success", name);
                     } else {
-                        showAlert("Failed to close engagement!", "danger");
+                        showAlert(`${name} saved`, "success", name);
                     }
                 } else {
-                    showAlert(response.ok ? `${name} saved` : "Failed to update!", response.ok ? "success" : "danger", name);
+                    showAlert("Failed to update engagement!", "danger");
                 }
 
                 fetchEngagements(); // Refresh data after update
