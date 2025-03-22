@@ -95,6 +95,10 @@
             background: linear-gradient(45deg, #6c757d, #95a5a6);
             color: white;
         }
+        .btn-success {
+            background: linear-gradient(45deg, var(--bs-success), #5cb85c);
+            color: white;
+        }
         .btn-sm {
             padding: 6px 12px;
             font-size: 0.875rem;
@@ -344,6 +348,7 @@
                         <th rowspan="2">Status (Lead)</th>
                         <th rowspan="2">Lead</th>
                         <th rowspan="2">Version</th>
+                        <th rowspan="2">Action</th>
                     </tr>
                     <tr>
                         <th>Completed</th>
@@ -546,6 +551,7 @@
                         <td>${engagement.build_id}</td>
                         <td>${usersList.find(user => user.id == engagement.lead)?.first_name || ''} ${usersList.find(user => user.id == engagement.lead)?.last_name || ''}</td>
                         <td>${engagement.version || ''}</td>
+                        <td><button class="btn btn-success btn-sm" onclick="reopenEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', '${engagement.product}', '${engagement.lead}')">Reopen</button></td>
                     `;
                     tableBody.appendChild(row);
                 });
@@ -637,8 +643,6 @@
 
                     allEngagements = data.results.filter(engagement => {
                         const createdDate = engagement.created ? engagement.created.split("T")[0] : "";
-                        const engagementName = engagement.name.toLowerCase();
-
                         if (!createdDate || new Date(createdDate) <= new Date("2025-02-28")) return false;
                         return true;
                     });
@@ -653,7 +657,7 @@
                     }));
 
                     openEngagements = allEngagements.filter(engagement => 
-                        !(engagement.status === "Completed" && 
+                        !engagement.active || !(engagement.status === "Completed" && 
                           engagement.commit_hash === "Completed" && 
                           engagement.build_id === "Completed")
                     ).filter(engagement => {
@@ -667,6 +671,7 @@
                     });
 
                     closedEngagements = allEngagements.filter(engagement => 
+                        engagement.active === false && 
                         engagement.status === "Completed" && 
                         engagement.commit_hash === "Completed" && 
                         engagement.build_id === "Completed"
@@ -733,7 +738,8 @@
                     status,
                     commit_hash: commitHash,
                     build_id: buildId,
-                    version
+                    version,
+                    active: true // Default to active unless closed
                 };
 
                 const response = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
@@ -743,10 +749,59 @@
                     credentials: "include"
                 });
 
-                showAlert(response.ok ? `${name} saved` : "Failed to update!", response.ok ? "success" : "danger", name);
+                if (response.ok && status === "Completed" && commitHash === "Completed" && buildId === "Completed") {
+                    const closePayload = { active: false };
+                    const closeResponse = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+                        body: JSON.stringify(closePayload),
+                        credentials: "include"
+                    });
+                    if (closeResponse.ok) {
+                        showAlert(`${name} closed and saved`, "success", name);
+                    } else {
+                        showAlert("Failed to close engagement!", "danger");
+                    }
+                } else {
+                    showAlert(response.ok ? `${name} saved` : "Failed to update!", response.ok ? "success" : "danger", name);
+                }
+
                 fetchEngagements(); // Refresh data after update
             } catch (error) {
                 showAlert("Error updating engagement!", "danger");
+                console.error("Error:", error);
+            }
+        }
+
+        async function reopenEngagement(engagementId, name, targetStart, targetEnd, product, lead) {
+            try {
+                const payload = {
+                    active: true,
+                    status: "Not Started",
+                    commit_hash: "Not Started",
+                    build_id: "Not Started",
+                    name,
+                    target_start: targetStart,
+                    target_end: targetEnd,
+                    product,
+                    lead
+                };
+
+                const response = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+                    body: JSON.stringify(payload),
+                    credentials: "include"
+                });
+
+                if (response.ok) {
+                    showAlert(`${name} reopened`, "success", name);
+                    fetchEngagements(); // Refresh data after reopening
+                } else {
+                    showAlert("Failed to reopen engagement!", "danger");
+                }
+            } catch (error) {
+                showAlert("Error reopening engagement!", "danger");
                 console.error("Error:", error);
             }
         }
