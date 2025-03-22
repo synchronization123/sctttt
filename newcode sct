@@ -42,7 +42,7 @@
             border: 1px solid rgba(255,255,255,0.1);
             position: relative;
         }
-        h1 {
+        h1, h2 {
             color: var(--bs-dark);
             text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
             font-weight: 600;
@@ -276,6 +276,9 @@
         #testCasesTable th:nth-child(4), #testCasesTable td:nth-child(4) { min-width: 100px; } /* Version */
         #testCasesTable th:nth-child(5), #testCasesTable td:nth-child(5) { min-width: 100px; } /* Status */
         #testCasesTable th:nth-child(6), #testCasesTable td:nth-child(6) { min-width: 150px; } /* Assigned To */
+        #testCasesTable th:nth-child(7), #testCasesTable td:nth-child(7) { min-width: 100px; } /* Type */
+        #testCasesTable th:nth-child(8), #testCasesTable td:nth-child(8) { min-width: 100px; } /* Issue Type */
+        #testCasesTable th:nth-child(9), #testCasesTable td:nth-child(9) { min-width: 100px; } /* Jira Status */
         .form-select {
             padding: 8px 24px 8px 8px;
             appearance: none;
@@ -420,7 +423,7 @@
                         <th rowspan="2">Total Key</th>
                         <th colspan="4" class="text-center">Analysis Status</th>
                         <th colspan="2" class="text-center">Jira Status</th>
-                        <th rowspan="2">Status (Analyst)</th>
+                        <th rowspan="2">Status (Analyst)</ personally>
                         <th rowspan="2">Status (Mentor)</th>
                         <th rowspan="2">Status (Lead)</th>
                         <th rowspan="2">Lead</th>
@@ -449,6 +452,28 @@
         </div>
         <div id="testCasesModal" class="modal">
             <h2>Test Cases</h2>
+            <div class="row mb-2">
+                <div class="col-md-3">
+                    <select id="filterType" class="form-select" onchange="applyTestCasesFilters()">
+                        <option value="">Filter by Type</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select id="filterIssueType" class="form-select" onchange="applyTestCasesFilters()">
+                        <option value="">Filter by Issue Type</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select id="filterJiraStatus" class="form-select" onchange="applyTestCasesFilters()">
+                        <option value="">Filter by Jira Status</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select id="filterStatus" class="form-select" onchange="applyTestCasesFilters()">
+                        <option value="">Filter by Status</option>
+                    </select>
+                </div>
+            </div>
             <table id="testCasesTable">
                 <thead>
                     <tr>
@@ -458,6 +483,9 @@
                         <th>Version</th>
                         <th>Status</th>
                         <th>Assigned To</th>
+                        <th>Type</th>
+                        <th>Issue Type</th>
+                        <th>Jira Status</th>
                     </tr>
                 </thead>
                 <tbody id="testCasesTableBody"></tbody>
@@ -481,6 +509,8 @@
         let openEngagements = [];
         let closedEngagements = [];
         let testCases = [];
+        let filteredTestCases = [];
+        let environmentCache = {};
 
         async function fetchCSRF() {
             try {
@@ -556,6 +586,22 @@
                 fetchEngagements();
             } catch (error) {
                 console.error("Error fetching users:", error);
+            }
+        }
+
+        async function fetchEnvironmentName(envId) {
+            if (!envId) return 'N/A';
+            if (environmentCache[envId]) return environmentCache[envId];
+
+            try {
+                const response = await fetch(`${BASE_URL}/development_environments/${envId}/`);
+                const data = await response.json();
+                environmentCache[envId] = data.name || 'Unknown';
+                return environmentCache[envId];
+            } catch (error) {
+                console.error(`Error fetching environment ${envId}:`, error);
+                environmentCache[envId] = 'Error';
+                return 'Error';
             }
         }
 
@@ -879,7 +925,14 @@
                     testCases = testCases.filter(tc => tc.branch_tag === filter);
                 }
 
+                // Fetch environment names for all test cases
+                await Promise.all(testCases.map(async tc => {
+                    tc.environmentName = await fetchEnvironmentName(tc.environment);
+                }));
+
+                filteredTestCases = [...testCases];
                 currentTestCasesPage = 1;
+                populateTestCasesFilters();
                 renderTestCasesTable(currentTestCasesPage);
 
                 const modal = document.getElementById("testCasesModal");
@@ -892,12 +945,46 @@
             }
         }
 
+        function populateTestCasesFilters() {
+            const typeFilter = document.getElementById("filterType");
+            const issueTypeFilter = document.getElementById("filterIssueType");
+            const jiraStatusFilter = document.getElementById("filterJiraStatus");
+            const statusFilter = document.getElementById("filterStatus");
+
+            const uniqueTypes = [...new Set(testCases.map(tc => tc.environmentName || 'N/A'))].sort();
+            const uniqueIssueTypes = [...new Set(testCases.map(tc => tc.commit_hash || 'N/A'))].sort();
+            const uniqueJiraStatuses = [...new Set(testCases.map(tc => tc.build_id || 'N/A'))].sort();
+            const uniqueStatuses = [...new Set(testCases.map(tc => tc.branch_tag || 'N/A'))].sort();
+
+            typeFilter.innerHTML = '<option value="">Filter by Type</option>' + uniqueTypes.map(val => `<option value="${val}">${val}</option>`).join('');
+            issueTypeFilter.innerHTML = '<option value="">Filter by Issue Type</option>' + uniqueIssueTypes.map(val => `<option value="${val}">${val}</option>`).join('');
+            jiraStatusFilter.innerHTML = '<option value="">Filter by Jira Status</option>' + uniqueJiraStatuses.map(val => `<option value="${val}">${val}</option>`).join('');
+            statusFilter.innerHTML = '<option value="">Filter by Status</option>' + uniqueStatuses.map(val => `<option value="${val}">${val}</option>`).join('');
+        }
+
+        function applyTestCasesFilters() {
+            const typeFilter = document.getElementById("filterType").value;
+            const issueTypeFilter = document.getElementById("filterIssueType").value;
+            const jiraStatusFilter = document.getElementById("filterJiraStatus").value;
+            const statusFilter = document.getElementById("filterStatus").value;
+
+            filteredTestCases = testCases.filter(tc => {
+                return (!typeFilter || tc.environmentName === typeFilter) &&
+                       (!issueTypeFilter || tc.commit_hash === issueTypeFilter) &&
+                       (!jiraStatusFilter || tc.build_id === jiraStatusFilter) &&
+                       (!statusFilter || tc.branch_tag === statusFilter);
+            });
+
+            currentTestCasesPage = 1;
+            renderTestCasesTable(currentTestCasesPage);
+        }
+
         function renderTestCasesTable(page) {
             const tableBody = document.getElementById("testCasesTableBody");
             tableBody.innerHTML = "";
             const start = (page - 1) * TEST_CASES_PER_PAGE;
             const end = start + TEST_CASES_PER_PAGE;
-            const paginatedTestCases = testCases.slice(start, end);
+            const paginatedTestCases = filteredTestCases.slice(start, end);
 
             requestAnimationFrame(() => {
                 paginatedTestCases.forEach(tc => {
@@ -909,8 +996,11 @@
                         <td>${tc.title || ''}</td>
                         <td>${tc.description || ''}</td>
                         <td>${tc.version || ''}</td>
-                        <td>${tc.branch_tag || ''}</td>
+                        <td>${tc.branch_tag || 'N/A'}</td>
                         <td>${leadName}</td>
+                        <td>${tc.environmentName || 'N/A'}</td>
+                        <td>${tc.commit_hash || 'N/A'}</td>
+                        <td>${tc.build_id || 'N/A'}</td>
                     `;
                     tableBody.appendChild(row);
                 });
@@ -920,7 +1010,7 @@
         }
 
         function renderTestCasesPagination() {
-            const totalPages = Math.ceil(testCases.length / TEST_CASES_PER_PAGE);
+            const totalPages = Math.ceil(filteredTestCases.length / TEST_CASES_PER_PAGE);
             const pagination = document.getElementById("testCasesPagination");
             pagination.innerHTML = "";
 
@@ -978,7 +1068,7 @@
         }
 
         function updateTestCasesPaginationHighlight() {
-            const totalPages = Math.ceil(testCases.length / TEST_CASES_PER_PAGE);
+            const totalPages = Math.ceil(filteredTestCases.length / TEST_CASES_PER_PAGE);
             document.querySelectorAll("#testCasesPagination .page-item").forEach(item => {
                 item.classList.remove('active');
                 if (item.textContent === "First" && currentTestCasesPage === 1) item.classList.add('active');
@@ -1191,4 +1281,4 @@
         });
     </script>
 </body>
-</html>
+</html>Key
