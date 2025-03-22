@@ -248,7 +248,7 @@
         th:nth-child(2), td:nth-child(2) { min-width: 150px; } /* Name */
         th:nth-child(3), td:nth-child(3) { min-width: 60px; } /* Total Key */
         th:nth-child(4), td:nth-child(4) { min-width: 60px; } /* Completed */
-        th:nth-child(5), td:nth-child(5) { min-width: 60px; } /* Pending */
+        th:nth-child(5), td:nth-child(5) { min-width: 50px; } /* Pending (Reduced from 60px) */
         th:nth-child(6), td:nth-child(6) { min-width: 60px; } /* On Hold */
         th:nth-child(7), td:nth-child(7) { min-width: 60px; } /* Rejected */
         th:nth-child(8), td:nth-child(8) { min-width: 60px; } /* Doable Jira */
@@ -319,24 +319,24 @@
             <div class="row mb-2">
                 <!-- Name Search -->
                 <div class="col-md-3">
-                    <input type="text" id="nameSearch" class="form-control" placeholder="Search by name..." oninput="fetchEngagements()">
+                    <input type="text" id="nameSearchOpen" class="form-control" placeholder="Search by name..." oninput="fetchEngagements()">
                 </div>
                 <!-- Lead Filter (Renamed to Select Name) -->
                 <div class="col-md-3">
-                    <select id="leadFilter" class="form-select" onchange="fetchEngagements()">
+                    <select id="leadFilterOpen" class="form-select" onchange="fetchEngagements()">
                         <option value="">Select Name</option>
                     </select>
                 </div>
                 <!-- Date Filters -->
                 <div class="col-md-2">
-                    <input type="date" id="date1" class="form-control" onchange="fetchEngagements()">
+                    <input type="date" id="date1Open" class="form-control" onchange="fetchEngagements()">
                 </div>
                 <div class="col-md-2">
-                    <input type="date" id="date2" class="form-control" onchange="fetchEngagements()">
+                    <input type="date" id="date2Open" class="form-control" onchange="fetchEngagements()">
                 </div>
                 <!-- Clear Filters Button -->
                 <div class="col-md-2 text-end">
-                    <button class="btn btn-secondary btn-clear" onclick="clearFilters()" data-tooltip="Clear Filters">↺</button>
+                    <button class="btn btn-secondary btn-clear" onclick="clearFilters('open')" data-tooltip="Clear Filters">↺</button>
                 </div>
             </div>
 
@@ -371,6 +371,30 @@
         </div>
 
         <div id="closed-tab" class="tab-content">
+            <div class="row mb-2">
+                <!-- Name Search -->
+                <div class="col-md-3">
+                    <input type="text" id="nameSearchClosed" class="form-control" placeholder="Search by name..." oninput="fetchEngagements()">
+                </div>
+                <!-- Lead Filter (Renamed to Select Name) -->
+                <div class="col-md-3">
+                    <select id="leadFilterClosed" class="form-select" onchange="fetchEngagements()">
+                        <option value="">Select Name</option>
+                    </select>
+                </div>
+                <!-- Date Filters -->
+                <div class="col-md-2">
+                    <input type="date" id="date1Closed" class="form-control" onchange="fetchEngagements()">
+                </div>
+                <div class="col-md-2">
+                    <input type="date" id="date2Closed" class="form-control" onchange="fetchEngagements()">
+                </div>
+                <!-- Clear Filters Button -->
+                <div class="col-md-2 text-end">
+                    <button class="btn btn-secondary btn-clear" onclick="clearFilters('closed')" data-tooltip="Clear Filters">↺</button>
+                </div>
+            </div>
+
             <table>
                 <thead>
                     <tr>
@@ -477,16 +501,19 @@
                 const data = await response.json();
                 usersList = data.results || [];
 
-                const leadFilter = document.getElementById("leadFilter");
-                if (leadFilter) {
-                    leadFilter.innerHTML = `<option value="">Select Name</option>`;
-                    usersList.forEach(user => {
-                        const option = document.createElement("option");
-                        option.value = user.id;
-                        option.textContent = `${user.first_name} ${user.last_name}`;
-                        leadFilter.appendChild(option);
+                const leadFilterOpen = document.getElementById("leadFilterOpen");
+                const leadFilterClosed = document.getElementById("leadFilterClosed");
+                if (leadFilterOpen && leadFilterClosed) {
+                    [leadFilterOpen, leadFilterClosed].forEach(leadFilter => {
+                        leadFilter.innerHTML = `<option value="">Select Name</option>`;
+                        usersList.forEach(user => {
+                            const option = document.createElement("option");
+                            option.value = user.id;
+                            option.textContent = `${user.first_name} ${user.last_name}`;
+                            leadFilter.appendChild(option);
+                        });
+                        if (loggedInUserId) leadFilter.value = loggedInUserId;
                     });
-                    if (loggedInUserId) leadFilter.value = loggedInUserId;
                 }
                 fetchEngagements();
             } catch (error) {
@@ -494,11 +521,18 @@
             }
         }
 
-        function clearFilters() {
-            document.getElementById("nameSearch").value = "";
-            document.getElementById("leadFilter").value = "";
-            document.getElementById("date1").value = "";
-            document.getElementById("date2").value = "";
+        function clearFilters(tab) {
+            if (tab === 'open') {
+                document.getElementById("nameSearchOpen").value = "";
+                document.getElementById("leadFilterOpen").value = "";
+                document.getElementById("date1Open").value = "";
+                document.getElementById("date2Open").value = "";
+            } else {
+                document.getElementById("nameSearchClosed").value = "";
+                document.getElementById("leadFilterClosed").value = "";
+                document.getElementById("date1Closed").value = "";
+                document.getElementById("date2Closed").value = "";
+            }
             fetchEngagements();
         }
 
@@ -719,10 +753,15 @@
                     const data = await response.json();
                     if (!data.results) return;
 
-                    const date1 = document.getElementById("date1").value;
-                    const date2 = document.getElementById("date2").value;
-                    const selectedLead = document.getElementById("leadFilter").value;
-                    const nameSearch = document.getElementById("nameSearch").value.toLowerCase().trim();
+                    const date1Open = document.getElementById("date1Open").value;
+                    const date2Open = document.getElementById("date2Open").value;
+                    const selectedLeadOpen = document.getElementById("leadFilterOpen").value;
+                    const nameSearchOpen = document.getElementById("nameSearchOpen").value.toLowerCase().trim();
+
+                    const date1Closed = document.getElementById("date1Closed").value;
+                    const date2Closed = document.getElementById("date2Closed").value;
+                    const selectedLeadClosed = document.getElementById("leadFilterClosed").value;
+                    const nameSearchClosed = document.getElementById("nameSearchClosed").value.toLowerCase().trim();
 
                     allEngagements = data.results.filter(engagement => {
                         const createdDate = engagement.created ? engagement.created.split("T")[0] : "";
@@ -747,10 +786,10 @@
                     }).filter(engagement => {
                         const createdDate = engagement.created.split("T")[0];
                         const engagementName = engagement.name.toLowerCase();
-                        if (date1 && createdDate < date1) return false;
-                        if (date2 && createdDate > date2) return false;
-                        if (selectedLead && engagement.lead != selectedLead) return false;
-                        if (nameSearch && !engagementName.includes(nameSearch)) return false;
+                        if (date1Open && createdDate < date1Open) return false;
+                        if (date2Open && createdDate > date2Open) return false;
+                        if (selectedLeadOpen && engagement.lead != selectedLeadOpen) return false;
+                        if (nameSearchOpen && !engagementName.includes(nameSearchOpen)) return false;
                         return true;
                     });
 
@@ -762,10 +801,10 @@
                     }).filter(engagement => {
                         const createdDate = engagement.created.split("T")[0];
                         const engagementName = engagement.name.toLowerCase();
-                        if (date1 && createdDate < date1) return false;
-                        if (date2 && createdDate > date2) return false;
-                        if (selectedLead && engagement.lead != selectedLead) return false;
-                        if (nameSearch && !engagementName.includes(nameSearch)) return false;
+                        if (date1Closed && createdDate < date1Closed) return false;
+                        if (date2Closed && createdDate > date2Closed) return false;
+                        if (selectedLeadClosed && engagement.lead != selectedLeadClosed) return false;
+                        if (nameSearchClosed && !engagementName.includes(nameSearchClosed)) return false;
                         return true;
                     });
 
@@ -851,7 +890,12 @@
                     credentials: "include"
                 });
 
-                if (!response.ok) {
+                if (response.ok) {
+                    // Check if called from Save button (event exists)
+                    if (event && event.type === "click") {
+                        showAlert("saved successfully", "success", name);
+                    }
+                } else {
                     showAlert("Failed to update engagement!", "danger");
                 }
 
@@ -985,4 +1029,4 @@
         });
     </script>
 </body>
-</html>Key Changes
+</html>
