@@ -485,7 +485,7 @@
                     const pending = testCases.filter(tc => tc.branch_tag === "Pending").length;
                     const onHold = testCases.filter(tc => tc.branch_tag === "On Hold").length;
                     const rejected = testCases.filter(tc => tc.branch_tag === "Rejected").length;
-                    const doableJiras = testCases.filter(tc => tc.build_id === "Closed" || tc.build_id === "To Do").length;
+                    const doableJiras = testCases.filter tc => tc.build_id === "Closed" || tc.build_id === "To Do").length;
                     const nonDoableJiras = totalJiras - doableJiras;
 
                     const row = document.createElement("tr");
@@ -722,7 +722,12 @@
 
         async function updateEngagement(engagementId, name, targetStart, targetEnd, product, lead) {
             try {
-                const row = document.querySelector(`.version-input[data-id="${engagementId}"]`).closest("tr");
+                const row = document.querySelector(`tr[data-id="${engagementId}"]`);
+                if (!row || !document.getElementById("open-tab").classList.contains("active")) {
+                    console.error("Update called outside Open SCT tab or row not found");
+                    return;
+                }
+
                 const status = row.querySelector("td:nth-child(10) select").value;
                 const commitHash = row.querySelector("td:nth-child(11) select").value;
                 const buildId = row.querySelector("td:nth-child(12) select").value;
@@ -730,6 +735,8 @@
                 const updatedLead = row.querySelector(".lead-dropdown").value;
 
                 const isCompleted = status === "Completed" && commitHash === "Completed" && buildId === "Completed";
+                console.log(`Engagement ${engagementId} - Status: ${status}, Commit Hash: ${commitHash}, Build ID: ${buildId}, Is Completed: ${isCompleted}`);
+
                 const payload = {
                     id: engagementId,
                     name,
@@ -743,6 +750,8 @@
                     version,
                     active: isCompleted ? false : true // Set active: false if all three are "Completed" in Open SCT
                 };
+
+                console.log("Sending payload:", payload);
 
                 const response = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
                     method: "PUT",
