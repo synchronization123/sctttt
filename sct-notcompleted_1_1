@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DefectDojo Engagements</title>
+    <style>
+        /* Minimal Bootstrap-inspired CSS */
+        :root {
+            --bs-blue: #0d6efd;
+            --bs-success: #198754;
+            --bs-warning: #ffc107;
+            --bs-danger: #dc3545;
+            --bs-gray-100: #f8f9fa;
+            --bs-gray-200: #e9ecef;
+        }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            width: 90vw;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .text-center { text-align: center; }
+        .mb-4 { margin-bottom: 1.5rem; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .d-flex { display: flex; }
+        .justify-content-between { justify-content: space-between; }
+        .row { display: flex; flex-wrap: wrap; gap: 10px; }
+        .col-md-3, .col-md-2 { flex: 1; min-width: 150px; }
+        .text-end { text-align: end; }
+        .w-100 { width: 100%; }
+
+        .form-control, .form-select, .version-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-primary { background: var(--bs-blue); color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-sm { padding: 5px 10px; font-size: 0.875rem; }
+        .alert {
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+        .alert-success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .alert-danger { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        th {
+            background: var(--bs-gray-200);
+            white-space: normal;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">Engagements Dashboard</h1>
+        <div class="d-flex justify-content-between mb-2">
+            <button class="btn btn-primary" onclick="fetchEngagements()">Refresh Data</button>
+            <span>CSRF Token: <strong id="csrfToken">Fetching...</strong></span>
+        </div>
+
+        <div class="row mb-2">
+            <!-- Name Search -->
+            <div class="col-md-3">
+                <input type="text" id="nameSearch" class="form-control" placeholder="Search by name..." oninput="fetchEngagements()">
+            </div>
+            <!-- Lead Filter -->
+            <div class="col-md-3">
+                <select id="leadFilter" class="form-select" onchange="fetchEngagements()">
+                    <option value="">Select Lead</option>
+                </select>
+            </div>
+            <!-- Date Filters -->
+            <div class="col-md-2">
+                <input type="date" id="date1" class="form-control" onchange="fetchEngagements()">
+            </div>
+            <div class="col-md-2">
+                <input type="date" id="date2" class="form-control" onchange="fetchEngagements()">
+            </div>
+            <!-- Clear Filters Button -->
+            <div class="col-md-2 text-end">
+                <button class="btn btn-secondary w-100" onclick="clearFilters()">Clear Filters</button>
+            </div>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th rowspan="2">Created</th>
+                    <th rowspan="2">Name</th>
+                    <th rowspan="2">Total Key</th>
+                    <th colspan="4" class="text-center">Analysis Status</th>
+                    <th colspan="2" class="text-center">Jira Status</th>
+                    <th rowspan="2">Status (Analyst)</th>
+                    <th rowspan="2">Status (Mentor)</th>
+                    <th rowspan="2">Status (Lead)</th>
+                    <th rowspan="2">Lead</th>
+                    <th rowspan="2">Version</th>
+                    <th rowspan="2">Action</th>
+                </tr>
+                <tr>
+                    <th>Completed</th>
+                    <th>Pending</th>
+                    <th>On Hold</th>
+                    <th>Rejected</th>
+                    <th>Doable Jira</th>
+                    <th>Non-Doable Jira</th>
+                </tr>
+            </thead>
+            <tbody id="engagementsTable"></tbody>
+        </table>
+
+        <div id="alertBox" class="alert"></div>
+    </div>
+
+    <script>
+        const BASE_URL = "https://demo.defectdojo.org/api/v2";
+        let csrfToken = '';
+        let usersList = [];
+        let debounceTimeout;
+
+        async function fetchCSRF() {
+            try {
+                const response = await fetch("https://demo.defectdojo.org/api/key-v2", { credentials: "include" });
+                const text = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, "text/html");
+                const csrfInput = doc.querySelector("input[name='csrfmiddlewaretoken']");
+                if (csrfInput) {
+                    csrfToken = csrfInput.value;
+                    document.getElementById("csrfToken").innerText = csrfToken;
+                } else {
+                    console.error("CSRF token not found.");
+                }
+            } catch (error) {
+                console.error("Error fetching CSRF Token:", error);
+            }
+        }
+        function showAlert(message, type) {
+            const alertBox = document.getElementById("alertBox");
+            alertBox.className = `alert alert-${type}`;
+            alertBox.innerHTML = message;
+            alertBox.style.display = "block";
+            setTimeout(() => { alertBox.style.display = "none"; }, 3000);
+        }
+
+        async function fetchLoggedInUser() {
+            try {
+                const response = await fetch(`${BASE_URL}/user_profile/`, { credentials: "include" });
+                const data = await response.json();
+                return data.id;
+            } catch (error) {
+                console.error("Error fetching logged-in user:", error);
+                return null;
+            }
+        }
+
+        async function fetchUsers() {
+            try {
+                const loggedInUserId = await fetchLoggedInUser();
+                const response = await fetch(`${BASE_URL}/users/`);
+                const data = await response.json();
+                usersList = data.results || [];
+
+                const leadFilter = document.getElementById("leadFilter");
+                if (leadFilter) {
+                    leadFilter.innerHTML = `<option value="">Select Lead</option>`;
+                    usersList.forEach(user => {
+                        const option = document.createElement("option");
+                        option.value = user.id;
+                        option.textContent = `${user.first_name} ${user.last_name}`;
+                        leadFilter.appendChild(option);
+                    });
+                    if (loggedInUserId) leadFilter.value = loggedInUserId;
+                }
+                fetchEngagements();
+            } catch (error) {
+                console.error("Error fetching users:", error);
+            }
+        }
+
+        function clearFilters() {
+            document.getElementById("nameSearch").value = "";
+            document.getElementById("leadFilter").value = "";
+            document.getElementById("date1").value = "";
+            document.getElementById("date2").value = "";
+            fetchEngagements();
+        }
+
+        async function fetchEngagements() {
+            try {
+                if (debounceTimeout) clearTimeout(debounceTimeout);
+
+                debounceTimeout = setTimeout(async () => {
+                    const response = await fetch(`${BASE_URL}/engagements/?tags=crm&o=-created`);
+                    const data = await response.json();
+                    if (!data.results) return;
+
+                    const tableBody = document.getElementById("engagementsTable");
+                    requestAnimationFrame(() => (tableBody.innerHTML = ""));
+
+                    const date1 = document.getElementById("date1").value;
+                    const date2 = document.getElementById("date2").value;
+                    const selectedLead = document.getElementById("leadFilter").value;
+                    const nameSearch = document.getElementById("nameSearch").value.toLowerCase().trim();
+
+                    const filteredEngagements = data.results.filter(engagement => {
+                        const createdDate = engagement.created ? engagement.created.split("T")[0] : "";
+                        const engagementName = engagement.name.toLowerCase();
+
+                        if (!createdDate || new Date(createdDate) <= new Date("2025-02-28")) return false;
+                        if (date1 && createdDate < date1) return false;
+                        if (date2 && createdDate > date2) return false;
+                        if (selectedLead && engagement.lead != selectedLead) return false;
+                        if (nameSearch && !engagementName.includes(nameSearch)) return false;
+                        return true;
+                    });
+
+                    const testCasesResults = await Promise.all(
+                        filteredEngagements.map(engagement => fetchTestCases(engagement.id))
+                    );
+
+                    requestAnimationFrame(() => {
+                        filteredEngagements.forEach((engagement, index) => {
+                            const createdDate = engagement.created.split("T")[0];
+                            const testCases = testCasesResults[index] || [];
+
+                            const totalJiras = testCases.length;
+                            const completed = testCases.filter(tc => tc.branch_tag === "Completed").length;
+                            const pending = testCases.filter(tc => tc.branch_tag === "Pending").length;
+                            const onHold = testCases.filter(tc => tc.branch_tag === "On Hold").length;
+                            const rejected = testCases.filter(tc => tc.branch_tag === "Rejected").length;
+                            const doableJiras = testCases.filter(tc => tc.build_id === "Closed" || tc.build_id === "To Do").length;
+                            const nonDoableJiras = totalJiras - doableJiras;
+
+                            if (engagement.status === "Completed" &&
+                                engagement.commit_hash === "Completed" &&
+                                engagement.build_id === "Completed") {
+                                return;
+                            }
+
+                            const row = document.createElement("tr");
+                            row.innerHTML = `
+                                <td>${createdDate}</td>
+                                <td>${engagement.name}</td>
+                                <td>${totalJiras}</td>
+                                <td>${completed}</td>
+                                <td>${pending}</td>
+                                <td>${onHold}</td>
+                                <td>${rejected}</td>
+                                <td>${doableJiras}</td>
+                                <td>${nonDoableJiras}</td>
+                                <td>${createDropdown(engagement.status)}</td>
+                                <td>${createDropdown(engagement.commit_hash)}</td>
+                                <td>${createDropdown(engagement.build_id)}</td>
+                                <td>${createLeadDropdown(engagement.lead)}</td>
+                                <td><input type="text" class="version-input" value="${engagement.version || ''}" data-id="${engagement.id}"></td>
+                                <td><button class="btn btn-primary btn-sm" onclick="updateEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', '${engagement.product}', '${engagement.lead}')">Update</button></td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                    });
+                }, 500);
+            } catch (error) {
+                console.error("Error fetching engagements:", error);
+                showAlert("Error fetching engagements!", "danger");
+            }
+        }
+
+        async function fetchTestCases(engagementId) {
+            try {
+                const response = await fetch(`${BASE_URL}/tests/?engagement=${engagementId}&tags=crm_jira`);
+                const data = await response.json();
+                return data.results || [];
+            } catch (error) {
+                console.error("Error fetching test cases:", error);
+                return [];
+            }
+        }
+
+        function createDropdown(selectedValue) {
+            const options = ["Not Started", "On Hold", "Completed"];
+            let dropdown = `<select class="form-select status-dropdown">`;
+            options.forEach(option => {
+                dropdown += `<option value="${option}" ${option === selectedValue ? "selected" : ""}>${option}</option>`;
+            });
+            dropdown += `</select>`;
+            return dropdown;
+        }
+
+        function createLeadDropdown(selectedLeadId) {
+            let dropdown = `<select class="form-select lead-dropdown">`;
+            usersList.forEach(user => {
+                dropdown += `<option value="${user.id}" ${user.id == selectedLeadId ? "selected" : ""}>${user.first_name} ${user.last_name}</option>`;
+            });
+            dropdown += `</select>`;
+            return dropdown;
+        }
+
+        async function updateEngagement(engagementId, name, targetStart, targetEnd, product) {
+            try {
+                const row = document.querySelector(`.version-input[data-id="${engagementId}"]`).closest("tr");
+                const status = row.querySelector("td:nth-child(10) select").value;
+                const commitHash = row.querySelector("td:nth-child(11) select").value;
+                const buildId = row.querySelector("td:nth-child(12) select").value;
+                const version = row.querySelector(".version-input").value;
+                const lead = row.querySelector(".lead-dropdown").value;
+
+                const payload = {
+                    id: engagementId,
+                    name,
+                    target_start: targetStart,
+                    target_end: targetEnd,
+                    product,
+                    lead,
+                    status,
+                    commit_hash: commitHash,
+                    build_id: buildId,
+                    version
+                };
+
+                const response = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+                    body: JSON.stringify(payload),
+                    credentials: "include"
+                });
+
+                showAlert(response.ok ? "Engagement updated!" : "Failed to update!", response.ok ? "success" : "danger");
+            } catch (error) {
+                showAlert("Error updating engagement!", "danger");
+                console.error("Error:", error);
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            await fetchCSRF();
+            await fetchUsers();
+            await fetchEngagements();
+        });
+    </script>
+</body>
+</html>
