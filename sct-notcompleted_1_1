@@ -111,6 +111,12 @@
             padding: 6px 12px; /* Match btn-sm size */
             font-size: 0.875rem;
         }
+        .btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
         .btn:hover::after {
             content: attr(data-tooltip);
             position: absolute;
@@ -145,6 +151,32 @@
             background: linear-gradient(45deg, #f8d7da, #fce4e6);
             border: 1px solid #f5c6cb;
             color: #721c24;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+            max-width: 400px;
+            text-align: center;
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
         }
 
         /* Tab Styles */
@@ -370,6 +402,10 @@
         </div>
 
         <div id="alertBox" class="alert"></div>
+        <div id="modalOverlay" class="modal-overlay"></div>
+        <div id="closeModal" class="modal">
+            <p id="modalContent"></p>
+        </div>
     </div>
 
     <script>
@@ -405,9 +441,23 @@
         function showAlert(message, type, name = null) {
             const alertBox = document.getElementById("alertBox");
             alertBox.className = `alert alert-${type}`;
-            alertBox.innerHTML = type === "success" && name ? `${name} saved` : message;
+            alertBox.innerHTML = type === "success" && name ? `${name} closed successfully` : message;
             alertBox.style.display = "block";
             setTimeout(() => { alertBox.style.display = "none"; }, 3000);
+        }
+
+        function showModal(engagementId, name) {
+            const modal = document.getElementById("closeModal");
+            const overlay = document.getElementById("modalOverlay");
+            const modalContent = document.getElementById("modalContent");
+            modalContent.innerHTML = `Closing at: <a href="https://demo.defectdojo.org/engagement/${engagementId}/close" target="_blank">https://demo.defectdojo.org/engagement/${engagementId}/close</a>`;
+            modal.style.display = "block";
+            overlay.style.display = "block";
+            setTimeout(() => {
+                modal.style.display = "none";
+                overlay.style.display = "none";
+                showAlert(`${name} closed successfully`, "success", name);
+            }, 2000);
         }
 
         async function fetchLoggedInUser() {
@@ -511,10 +561,28 @@
                         <td><input type="text" class="version-input" value="${engagement.version || ''}" data-id="${engagement.id}"></td>
                         <td>
                             <button class="btn btn-primary btn-sm" onclick="updateEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', '${engagement.product}', '${engagement.lead}')">Save</button>
-                            <button class="btn btn-danger btn-sm" onclick="closeEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', '${engagement.product}', '${engagement.lead}')">Close</button>
+                            <button class="btn btn-danger btn-sm close-btn" data-id="${engagement.id}" disabled onclick="closeEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', '${engagement.product}', '${engagement.lead}')">Close</button>
                         </td>
                     `;
                     tableBody.appendChild(row);
+
+                    // Add event listeners to dropdowns to enable/disable Close button
+                    const analystStatus = row.querySelector("td:nth-child(10) select");
+                    const mentorStatus = row.querySelector("td:nth-child(11) select");
+                    const leadStatus = row.querySelector("td:nth-child(12) select");
+                    const closeBtn = row.querySelector(".close-btn");
+
+                    function updateCloseButton() {
+                        const allCompleted = analystStatus.value === "Completed" && 
+                                            mentorStatus.value === "Completed" && 
+                                            leadStatus.value === "Completed";
+                        closeBtn.disabled = !allCompleted;
+                    }
+
+                    analystStatus.addEventListener("change", updateCloseButton);
+                    mentorStatus.addEventListener("change", updateCloseButton);
+                    leadStatus.addEventListener("change", updateCloseButton);
+                    updateCloseButton(); // Initial check
                 });
             });
 
@@ -831,7 +899,7 @@
                 });
 
                 if (putResponse.ok) {
-                    showAlert(`${name} closed`, "success", name);
+                    showModal(engagementId, name);
                     fetchEngagements();
                 } else {
                     showAlert("Failed to close engagement!", "danger");
