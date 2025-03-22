@@ -99,7 +99,8 @@
         }
         .alert {
             position: absolute;
-            left: 25px; /* Align with Created column */
+            right: 25px; /* Align above Clear Filters */
+            top: 150px; /* Fixed position above filters */
             padding: 8px 15px;
             border-radius: 8px;
             display: none;
@@ -149,7 +150,7 @@
             background: #f0f4f8;
         }
         .highlight-name {
-            background: var(--highlight-green);
+            background: var(--highlight-green) !important; /* Override hover */
         }
 
         /* Pagination */
@@ -279,22 +280,11 @@
             }
         }
 
-        function showAlert(message, type, rowIndex) {
+        function showAlert(message, type) {
             const alertBox = document.getElementById("alertBox");
             alertBox.className = `alert alert-${type}`;
             alertBox.innerHTML = message;
             alertBox.style.display = "block";
-
-            // Position alert over the "Created" column of the respective row
-            const table = document.querySelector("table");
-            const row = document.querySelector(`#engagementsTable tr:nth-child(${rowIndex + 1})`);
-            if (row) {
-                const createdCell = row.querySelector("td:first-child");
-                const rect = createdCell.getBoundingClientRect();
-                const containerRect = document.querySelector(".container").getBoundingClientRect();
-                alertBox.style.top = `${rect.top - containerRect.top + table.offsetTop + (rect.height / 2) - (alertBox.offsetHeight / 2)}px`;
-            }
-
             setTimeout(() => { alertBox.style.display = "none"; }, 3000);
         }
 
@@ -362,7 +352,7 @@
                     const nonDoableJiras = totalJiras - doableJiras;
 
                     const row = document.createElement("tr");
-                    row.dataset.id = engagement.id; // Store ID for alert positioning
+                    row.dataset.id = engagement.id;
                     row.innerHTML = `
                         <td>${createdDate}</td>
                         <td class="${totalJiras === (completed + rejected) ? 'highlight-name' : ''}">${engagement.name}</td>
@@ -378,7 +368,7 @@
                         <td>${createDropdown(engagement.build_id)}</td>
                         <td>${createLeadDropdown(engagement.lead)}</td>
                         <td><input type="text" class="version-input" value="${engagement.version || ''}" data-id="${engagement.id}"></td>
-                        <td><button class="btn btn-primary btn-sm" onclick="updateEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', '${engagement.product}', '${engagement.lead}', ${index})">Update</button></td>
+                        <td><button class="btn btn-primary btn-sm" onclick="updateEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', '${engagement.product}', '${engagement.lead}')">Update</button></td>
                     `;
                     tableBody.appendChild(row);
                 });
@@ -499,7 +489,7 @@
                 }, 500);
             } catch (error) {
                 console.error("Error fetching engagements:", error);
-                showAlert("Error fetching engagements!", "danger", 0);
+                showAlert("Error fetching engagements!", "danger");
             }
         }
 
@@ -533,7 +523,7 @@
             return dropdown;
         }
 
-        async function updateEngagement(engagementId, name, targetStart, targetEnd, product, lead, rowIndex) {
+        async function updateEngagement(engagementId, name, targetStart, targetEnd, product, lead) {
             try {
                 const row = document.querySelector(`.version-input[data-id="${engagementId}"]`).closest("tr");
                 const status = row.querySelector("td:nth-child(10) select").value;
@@ -562,9 +552,9 @@
                     credentials: "include"
                 });
 
-                showAlert(response.ok ? "Engagement updated!" : "Failed to update!", response.ok ? "success" : "danger", rowIndex);
+                showAlert(response.ok ? "Engagement updated!" : "Failed to update!", response.ok ? "success" : "danger");
             } catch (error) {
-                showAlert("Error updating engagement!", "danger", rowIndex);
+                showAlert("Error updating engagement!", "danger");
                 console.error("Error:", error);
             }
         }
