@@ -99,6 +99,10 @@
             padding: 6px 12px;
             font-size: 0.875rem;
         }
+        .btn-refresh, .btn-clear {
+            padding: 6px 12px; /* Match btn-sm size */
+            font-size: 0.875rem;
+        }
         .btn:hover::after {
             content: attr(data-tooltip);
             position: absolute;
@@ -167,14 +171,24 @@
         .highlight-name {
             background: var(--highlight-green) !important;
         }
-        /* Adjust column widths to prevent overlap */
+        /* Adjust column widths */
         th:nth-child(1), td:nth-child(1) { min-width: 100px; } /* Created */
         th:nth-child(2), td:nth-child(2) { min-width: 150px; } /* Name */
-        th:nth-child(3), td:nth-child(3) { min-width: 80px; } /* Total Key */
+        th:nth-child(3), td:nth-child(3) { min-width: 60px; } /* Total Key */
+        th:nth-child(4), td:nth-child(4) { min-width: 60px; } /* Completed */
+        th:nth-child(5), td:nth-child(5) { min-width: 60px; } /* Pending */
+        th:nth-child(6), td:nth-child(6) { min-width: 60px; } /* On Hold */
+        th:nth-child(7), td:nth-child(7) { min-width: 60px; } /* Rejected */
+        th:nth-child(8), td:nth-child(8) { min-width: 60px; } /* Doable Jira */
+        th:nth-child(9), td:nth-child(9) { min-width: 60px; } /* Non-Doable Jira */
+        th:nth-child(10), td:nth-child(10) { min-width: 120px; } /* Status (Analyst) */
+        th:nth-child(11), td:nth-child(11) { min-width: 120px; } /* Status (Mentor) */
+        th:nth-child(12), td:nth-child(12) { min-width: 120px; } /* Status (Lead) */
+        th:nth-child(13), td:nth-child(13) { min-width: 150px; } /* Lead */
         th:nth-child(14), td:nth-child(14) { min-width: 120px; } /* Version */
         th:nth-child(15), td:nth-child(15) { min-width: 80px; } /* Action */
         .form-select {
-            padding: 8px 24px 8px 8px; /* Extra padding for dropdown arrow */
+            padding: 8px 24px 8px 8px;
             appearance: none;
             background: #f0f4f8 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="5" viewBox="0 0 10 5"><path fill="%232c3e50" d="M0 0h10L5 5z"/></svg>') no-repeat right 8px center;
         }
@@ -218,7 +232,7 @@
         <h1 class="text-center mb-4">Engagements Dashboard</h1>
 
         <div class="d-flex justify-content-between mb-2">
-            <button class="btn btn-primary" onclick="fetchEngagements()" data-tooltip="Refresh">⟳</button>
+            <button class="btn btn-primary btn-refresh" onclick="fetchEngagements()" data-tooltip="Refresh">🔄</button>
             <span class="csrf-label">CSRF Token: <strong id="csrfToken">Fetching...</strong></span>
         </div>
 
@@ -244,7 +258,7 @@
             </div>
             <!-- Clear Filters Button -->
             <div class="col-md-2 text-end">
-                <button class="btn btn-secondary w-100" onclick="clearFilters()" data-tooltip="Clear Filters">🧹</button>
+                <button class="btn btn-secondary btn-clear" onclick="clearFilters()" data-tooltip="Clear Filters">↺</button>
             </div>
         </div>
 
