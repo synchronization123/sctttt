@@ -1,0 +1,14 @@
+In above code display count as per logged in id of user and assignment of tests:
+for columns: Completed,Pending,On Hold,Rejected,Doable Jira	Non-Doable Jira (except users with id 1,9,6,7,8)
+API: https://demo.defectdojo.org/api/v2/user_profile/
+
+For example if i logs in and my id is 2 
+then display only those tests counts which are assigned to me out of total and when i click to open modal only my tests to be displayed.
+
+Also for column: enable fields only if Lead id matches logged in id value
+API: https://demo.defectdojo.org/api/v2/user_profile/
+Status (Analyst)	Status (Mentor)	Status (Lead)	Lead	Version
+
+Users API: https://demo.defectdojo.org/api/v2/users/?limit=100
+
+Keep existing working code intact and give me full code.
