@@ -15,6 +15,7 @@
             --bs-gray-200: #e9ecef;
             --bs-dark: #2c3e50;
             --bs-light: #ffffff;
+            --highlight-green: #d4edda; /* Light green for highlight */
         }
         body {
             background: linear-gradient(135deg, #6e48aa 0%, #9d50bb 100%);
@@ -39,7 +40,7 @@
             flex-direction: column;
             overflow-y: auto;
             border: 1px solid rgba(255,255,255,0.1);
-            position: relative; /* For alert positioning */
+            position: relative;
         }
         h1 {
             color: var(--bs-dark);
@@ -98,15 +99,14 @@
         }
         .alert {
             position: absolute;
-            right: 25px;
-            top: 50%;
-            transform: translateY(-50%);
-            padding: 12px 20px;
+            left: 25px; /* Align with Created column */
+            padding: 8px 15px;
             border-radius: 8px;
             display: none;
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
             z-index: 10;
-            max-width: 300px;
+            max-width: 200px;
+            font-size: 0.9rem;
         }
         .alert-success {
             background: linear-gradient(45deg, #d4edda, #e6f7e9);
@@ -147,6 +147,9 @@
         }
         tr:hover td {
             background: #f0f4f8;
+        }
+        .highlight-name {
+            background: var(--highlight-green);
         }
 
         /* Pagination */
@@ -276,11 +279,22 @@
             }
         }
 
-        function showAlert(message, type) {
+        function showAlert(message, type, rowIndex) {
             const alertBox = document.getElementById("alertBox");
             alertBox.className = `alert alert-${type}`;
             alertBox.innerHTML = message;
             alertBox.style.display = "block";
+
+            // Position alert over the "Created" column of the respective row
+            const table = document.querySelector("table");
+            const row = document.querySelector(`#engagementsTable tr:nth-child(${rowIndex + 1})`);
+            if (row) {
+                const createdCell = row.querySelector("td:first-child");
+                const rect = createdCell.getBoundingClientRect();
+                const containerRect = document.querySelector(".container").getBoundingClientRect();
+                alertBox.style.top = `${rect.top - containerRect.top + table.offsetTop + (rect.height / 2) - (alertBox.offsetHeight / 2)}px`;
+            }
+
             setTimeout(() => { alertBox.style.display = "none"; }, 3000);
         }
 
@@ -348,9 +362,10 @@
                     const nonDoableJiras = totalJiras - doableJiras;
 
                     const row = document.createElement("tr");
+                    row.dataset.id = engagement.id; // Store ID for alert positioning
                     row.innerHTML = `
                         <td>${createdDate}</td>
-                        <td>${engagement.name}</td>
+                        <td class="${totalJiras === (completed + rejected) ? 'highlight-name' : ''}">${engagement.name}</td>
                         <td>${totalJiras}</td>
                         <td>${completed}</td>
                         <td>${pending}</td>
@@ -363,7 +378,7 @@
                         <td>${createDropdown(engagement.build_id)}</td>
                         <td>${createLeadDropdown(engagement.lead)}</td>
                         <td><input type="text" class="version-input" value="${engagement.version || ''}" data-id="${engagement.id}"></td>
-                        <td><button class="btn btn-primary btn-sm" onclick="updateEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', '${engagement.product}', '${engagement.lead}')">Update</button></td>
+                        <td><button class="btn btn-primary btn-sm" onclick="updateEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', '${engagement.product}', '${engagement.lead}', ${index})">Update</button></td>
                     `;
                     tableBody.appendChild(row);
                 });
@@ -484,7 +499,7 @@
                 }, 500);
             } catch (error) {
                 console.error("Error fetching engagements:", error);
-                showAlert("Error fetching engagements!", "danger");
+                showAlert("Error fetching engagements!", "danger", 0);
             }
         }
 
@@ -518,14 +533,14 @@
             return dropdown;
         }
 
-        async function updateEngagement(engagementId, name, targetStart, targetEnd, product) {
+        async function updateEngagement(engagementId, name, targetStart, targetEnd, product, lead, rowIndex) {
             try {
                 const row = document.querySelector(`.version-input[data-id="${engagementId}"]`).closest("tr");
                 const status = row.querySelector("td:nth-child(10) select").value;
                 const commitHash = row.querySelector("td:nth-child(11) select").value;
                 const buildId = row.querySelector("td:nth-child(12) select").value;
                 const version = row.querySelector(".version-input").value;
-                const lead = row.querySelector(".lead-dropdown").value;
+                const updatedLead = row.querySelector(".lead-dropdown").value;
 
                 const payload = {
                     id: engagementId,
@@ -533,7 +548,7 @@
                     target_start: targetStart,
                     target_end: targetEnd,
                     product,
-                    lead,
+                    lead: updatedLead,
                     status,
                     commit_hash: commitHash,
                     build_id: buildId,
@@ -547,9 +562,9 @@
                     credentials: "include"
                 });
 
-                showAlert(response.ok ? "Engagement updated!" : "Failed to update!", response.ok ? "success" : "danger");
+                showAlert(response.ok ? "Engagement updated!" : "Failed to update!", response.ok ? "success" : "danger", rowIndex);
             } catch (error) {
-                showAlert("Error updating engagement!", "danger");
+                showAlert("Error updating engagement!", "danger", rowIndex);
                 console.error("Error:", error);
             }
         }
