@@ -139,6 +139,38 @@
             color: #721c24;
         }
 
+        /* Tab Styles */
+        .tab-container {
+            display: flex;
+            border-bottom: 2px solid var(--bs-gray-200);
+            margin-bottom: 20px;
+        }
+        .tab {
+            flex: 1;
+            padding: 10px 15px;
+            text-align: center;
+            cursor: pointer;
+            background: var(--bs-gray-100);
+            color: var(--bs-dark);
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .tab:hover {
+            background: #e0e0e0;
+        }
+        .tab.active {
+            background: var(--bs-blue);
+            color: white;
+        }
+        .tab-content {
+            display: none;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -238,58 +270,96 @@
 
         <div class="total-count" id="totalCount">Total Engagements: 0</div>
 
-        <div class="row mb-2">
-            <!-- Name Search -->
-            <div class="col-md-3">
-                <input type="text" id="nameSearch" class="form-control" placeholder="Search by name..." oninput="fetchEngagements()">
-            </div>
-            <!-- Lead Filter (Renamed to Select Name) -->
-            <div class="col-md-3">
-                <select id="leadFilter" class="form-select" onchange="fetchEngagements()">
-                    <option value="">Select Name</option>
-                </select>
-            </div>
-            <!-- Date Filters -->
-            <div class="col-md-2">
-                <input type="date" id="date1" class="form-control" onchange="fetchEngagements()">
-            </div>
-            <div class="col-md-2">
-                <input type="date" id="date2" class="form-control" onchange="fetchEngagements()">
-            </div>
-            <!-- Clear Filters Button -->
-            <div class="col-md-2 text-end">
-                <button class="btn btn-secondary btn-clear" onclick="clearFilters()" data-tooltip="Clear Filters">↺</button>
-            </div>
+        <div class="tab-container">
+            <div class="tab active" onclick="switchTab('open')">Open SCT</div>
+            <div class="tab" onclick="switchTab('closed')">Closed SCT</div>
         </div>
 
-        <table>
-            <thead>
-                <tr>
-                    <th rowspan="2">Created</th>
-                    <th rowspan="2">Name</th>
-                    <th rowspan="2">Total Key</th>
-                    <th colspan="4" class="text-center">Analysis Status</th>
-                    <th colspan="2" class="text-center">Jira Status</th>
-                    <th rowspan="2">Status (Analyst)</th>
-                    <th rowspan="2">Status (Mentor)</th>
-                    <th rowspan="2">Status (Lead)</th>
-                    <th rowspan="2">Lead</th>
-                    <th rowspan="2">Version</th>
-                    <th rowspan="2">Action</th>
-                </tr>
-                <tr>
-                    <th>Completed</th>
-                    <th>Pending</th>
-                    <th>On Hold</th>
-                    <th>Rejected</th>
-                    <th>Doable Jira</th>
-                    <th>Non-Doable Jira</th>
-                </tr>
-            </thead>
-            <tbody id="engagementsTable"></tbody>
-        </table>
+        <div id="open-tab" class="tab-content active">
+            <div class="row mb-2">
+                <!-- Name Search -->
+                <div class="col-md-3">
+                    <input type="text" id="nameSearch" class="form-control" placeholder="Search by name..." oninput="fetchEngagements()">
+                </div>
+                <!-- Lead Filter (Renamed to Select Name) -->
+                <div class="col-md-3">
+                    <select id="leadFilter" class="form-select" onchange="fetchEngagements()">
+                        <option value="">Select Name</option>
+                    </select>
+                </div>
+                <!-- Date Filters -->
+                <div class="col-md-2">
+                    <input type="date" id="date1" class="form-control" onchange="fetchEngagements()">
+                </div>
+                <div class="col-md-2">
+                    <input type="date" id="date2" class="form-control" onchange="fetchEngagements()">
+                </div>
+                <!-- Clear Filters Button -->
+                <div class="col-md-2 text-end">
+                    <button class="btn btn-secondary btn-clear" onclick="clearFilters()" data-tooltip="Clear Filters">↺</button>
+                </div>
+            </div>
 
-        <div class="pagination" id="pagination"></div>
+            <table>
+                <thead>
+                    <tr>
+                        <th rowspan="2">Created</th>
+                        <th rowspan="2">Name</th>
+                        <th rowspan="2">Total Key</th>
+                        <th colspan="4" class="text-center">Analysis Status</th>
+                        <th colspan="2" class="text-center">Jira Status</th>
+                        <th rowspan="2">Status (Analyst)</th>
+                        <th rowspan="2">Status (Mentor)</th>
+                        <th rowspan="2">Status (Lead)</th>
+                        <th rowspan="2">Lead</th>
+                        <th rowspan="2">Version</th>
+                        <th rowspan="2">Action</th>
+                    </tr>
+                    <tr>
+                        <th>Completed</th>
+                        <th>Pending</th>
+                        <th>On Hold</th>
+                        <th>Rejected</th>
+                        <th>Doable Jira</th>
+                        <th>Non-Doable Jira</th>
+                    </tr>
+                </thead>
+                <tbody id="engagementsTable"></tbody>
+            </table>
+
+            <div class="pagination" id="pagination"></div>
+        </div>
+
+        <div id="closed-tab" class="tab-content">
+            <table>
+                <thead>
+                    <tr>
+                        <th rowspan="2">Created</th>
+                        <th rowspan="2">Name</th>
+                        <th rowspan="2">Total Key</th>
+                        <th colspan="4" class="text-center">Analysis Status</th>
+                        <th colspan="2" class="text-center">Jira Status</th>
+                        <th rowspan="2">Status (Analyst)</th>
+                        <th rowspan="2">Status (Mentor)</th>
+                        <th rowspan="2">Status (Lead)</th>
+                        <th rowspan="2">Lead</th>
+                        <th rowspan="2">Version</th>
+                    </tr>
+                    <tr>
+                        <th>Completed</th>
+                        <th>Pending</th>
+                        <th>On Hold</th>
+                        <th>Rejected</th>
+                        <th>Doable Jira</th>
+                        <th>Non-Doable Jira</th>
+                    </tr>
+                </thead>
+                <tbody id="closedEngagementsTable"></tbody>
+            </table>
+
+            <div class="pagination" id="closedPagination"></div>
+        </div>
+
         <div id="alertBox" class="alert"></div>
     </div>
 
@@ -299,8 +369,11 @@
         let usersList = [];
         let debounceTimeout;
         const ROWS_PER_PAGE = 10;
-        let currentPage = 1;
+        let currentPageOpen = 1;
+        let currentPageClosed = 1;
         let allEngagements = [];
+        let openEngagements = [];
+        let closedEngagements = [];
 
         async function fetchCSRF() {
             try {
@@ -371,12 +444,31 @@
             fetchEngagements();
         }
 
-        function renderTable(page) {
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+            document.getElementById(`${tab}-tab`).classList.add('active');
+            if (tab === 'open') {
+                renderTableOpen(currentPageOpen);
+            } else {
+                renderTableClosed(currentPageClosed);
+            }
+            updateTotalCount();
+        }
+
+        function updateTotalCount() {
+            const activeTab = document.querySelector('.tab.active').textContent.trim();
+            const count = activeTab === 'Open SCT' ? openEngagements.length : closedEngagements.length;
+            document.getElementById("totalCount").textContent = `Total Engagements: ${count}`;
+        }
+
+        function renderTableOpen(page) {
             const tableBody = document.getElementById("engagementsTable");
             tableBody.innerHTML = "";
             const start = (page - 1) * ROWS_PER_PAGE;
             const end = start + ROWS_PER_PAGE;
-            const paginatedEngagements = allEngagements.slice(start, end);
+            const paginatedEngagements = openEngagements.slice(start, end);
 
             requestAnimationFrame(() => {
                 paginatedEngagements.forEach((engagement, index) => {
@@ -414,73 +506,118 @@
                 });
             });
 
-            renderPagination();
+            renderPagination('open');
         }
 
-        function renderPagination() {
-            const totalPages = Math.ceil(allEngagements.length / ROWS_PER_PAGE);
-            const pagination = document.getElementById("pagination");
+        function renderTableClosed(page) {
+            const tableBody = document.getElementById("closedEngagementsTable");
+            tableBody.innerHTML = "";
+            const start = (page - 1) * ROWS_PER_PAGE;
+            const end = start + ROWS_PER_PAGE;
+            const paginatedEngagements = closedEngagements.slice(start, end);
+
+            requestAnimationFrame(() => {
+                paginatedEngagements.forEach(engagement => {
+                    const createdDate = engagement.created.split("T")[0];
+                    const testCases = engagement.testCases || [];
+
+                    const totalJiras = testCases.length;
+                    const completed = testCases.filter(tc => tc.branch_tag === "Completed").length;
+                    const pending = testCases.filter(tc => tc.branch_tag === "Pending").length;
+                    const onHold = testCases.filter(tc => tc.branch_tag === "On Hold").length;
+                    const rejected = testCases.filter(tc => tc.branch_tag === "Rejected").length;
+                    const doableJiras = testCases.filter(tc => tc.build_id === "Closed" || tc.build_id === "To Do").length;
+                    const nonDoableJiras = totalJiras - doableJiras;
+
+                    const row = document.createElement("tr");
+                    row.dataset.id = engagement.id;
+                    row.innerHTML = `
+                        <td>${createdDate}</td>
+                        <td class="${totalJiras === (completed + rejected) ? 'highlight-name' : ''}">${engagement.name}</td>
+                        <td>${totalJiras}</td>
+                        <td>${completed}</td>
+                        <td>${pending}</td>
+                        <td>${onHold}</td>
+                        <td>${rejected}</td>
+                        <td>${doableJiras}</td>
+                        <td>${nonDoableJiras}</td>
+                        <td>${engagement.status}</td>
+                        <td>${engagement.commit_hash}</td>
+                        <td>${engagement.build_id}</td>
+                        <td>${usersList.find(user => user.id == engagement.lead)?.first_name || ''} ${usersList.find(user => user.id == engagement.lead)?.last_name || ''}</td>
+                        <td>${engagement.version || ''}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            });
+
+            renderPagination('closed');
+        }
+
+        function renderPagination(tab) {
+            const totalPages = Math.ceil((tab === 'open' ? openEngagements : closedEngagements).length / ROWS_PER_PAGE);
+            const pagination = document.getElementById(tab === 'open' ? 'pagination' : 'closedPagination');
             pagination.innerHTML = "";
 
             // First
             const firstItem = document.createElement("div");
-            firstItem.className = `page-item ${currentPage === 1 ? 'active' : ''}`;
+            firstItem.className = `page-item ${(tab === 'open' ? currentPageOpen : currentPageClosed) === 1 ? 'active' : ''}`;
             firstItem.textContent = "First";
             firstItem.onclick = () => {
-                if (currentPage !== 1) {
-                    currentPage = 1;
-                    renderTable(currentPage);
-                    updatePaginationHighlight();
+                if ((tab === 'open' ? currentPageOpen : currentPageClosed) !== 1) {
+                    if (tab === 'open') currentPageOpen = 1; else currentPageClosed = 1;
+                    tab === 'open' ? renderTableOpen(currentPageOpen) : renderTableClosed(currentPageClosed);
+                    updatePaginationHighlight(tab);
                 }
             };
             pagination.appendChild(firstItem);
 
             // Previous
             const prevItem = document.createElement("div");
-            prevItem.className = `page-item ${currentPage === 1 ? '' : ''}`;
+            prevItem.className = `page-item`;
             prevItem.textContent = "Previous";
             prevItem.onclick = () => {
-                if (currentPage > 1) {
-                    currentPage--;
-                    renderTable(currentPage);
-                    updatePaginationHighlight();
+                if ((tab === 'open' ? currentPageOpen : currentPageClosed) > 1) {
+                    if (tab === 'open') currentPageOpen--; else currentPageClosed--;
+                    tab === 'open' ? renderTableOpen(currentPageOpen) : renderTableClosed(currentPageClosed);
+                    updatePaginationHighlight(tab);
                 }
             };
             pagination.appendChild(prevItem);
 
             // Next
             const nextItem = document.createElement("div");
-            nextItem.className = `page-item ${currentPage === totalPages ? '' : ''}`;
+            nextItem.className = `page-item`;
             nextItem.textContent = "Next";
             nextItem.onclick = () => {
-                if (currentPage < totalPages) {
-                    currentPage++;
-                    renderTable(currentPage);
-                    updatePaginationHighlight();
+                if ((tab === 'open' ? currentPageOpen : currentPageClosed) < totalPages) {
+                    if (tab === 'open') currentPageOpen++; else currentPageClosed++;
+                    tab === 'open' ? renderTableOpen(currentPageOpen) : renderTableClosed(currentPageClosed);
+                    updatePaginationHighlight(tab);
                 }
             };
             pagination.appendChild(nextItem);
 
             // Last
             const lastItem = document.createElement("div");
-            lastItem.className = `page-item ${currentPage === totalPages ? 'active' : ''}`;
+            lastItem.className = `page-item ${(tab === 'open' ? currentPageOpen : currentPageClosed) === totalPages ? 'active' : ''}`;
             lastItem.textContent = "Last";
             lastItem.onclick = () => {
-                if (currentPage !== totalPages) {
-                    currentPage = totalPages;
-                    renderTable(currentPage);
-                    updatePaginationHighlight();
+                if ((tab === 'open' ? currentPageOpen : currentPageClosed) !== totalPages) {
+                    if (tab === 'open') currentPageOpen = totalPages; else currentPageClosed = totalPages;
+                    tab === 'open' ? renderTableOpen(currentPageOpen) : renderTableClosed(currentPageClosed);
+                    updatePaginationHighlight(tab);
                 }
             };
             pagination.appendChild(lastItem);
         }
 
-        function updatePaginationHighlight() {
-            const totalPages = Math.ceil(allEngagements.length / ROWS_PER_PAGE);
-            document.querySelectorAll('.page-item').forEach(item => {
+        function updatePaginationHighlight(tab) {
+            const totalPages = Math.ceil((tab === 'open' ? openEngagements : closedEngagements).length / ROWS_PER_PAGE);
+            document.querySelectorAll(`#${tab === 'open' ? 'pagination' : 'closedPagination'} .page-item`).forEach(item => {
                 item.classList.remove('active');
-                if (item.textContent === "First" && currentPage === 1) item.classList.add('active');
-                if (item.textContent === "Last" && currentPage === totalPages) item.classList.add('active');
+                if (item.textContent === "First" && (tab === 'open' ? currentPageOpen : currentPageClosed) === 1) item.classList.add('active');
+                if (item.textContent === "Last" && (tab === 'open' ? currentPageOpen : currentPageClosed) === totalPages) item.classList.add('active');
             });
         }
 
@@ -498,34 +635,48 @@
                     const selectedLead = document.getElementById("leadFilter").value;
                     const nameSearch = document.getElementById("nameSearch").value.toLowerCase().trim();
 
-                    const filteredEngagements = data.results.filter(engagement => {
+                    allEngagements = data.results.filter(engagement => {
                         const createdDate = engagement.created ? engagement.created.split("T")[0] : "";
                         const engagementName = engagement.name.toLowerCase();
 
                         if (!createdDate || new Date(createdDate) <= new Date("2025-02-28")) return false;
+                        return true;
+                    });
+
+                    const testCasesResults = await Promise.all(
+                        allEngagements.map(engagement => fetchTestCases(engagement.id))
+                    );
+
+                    allEngagements = allEngagements.map((engagement, index) => ({
+                        ...engagement,
+                        testCases: testCasesResults[index]
+                    }));
+
+                    openEngagements = allEngagements.filter(engagement => 
+                        !(engagement.status === "Completed" && 
+                          engagement.commit_hash === "Completed" && 
+                          engagement.build_id === "Completed")
+                    ).filter(engagement => {
+                        const createdDate = engagement.created.split("T")[0];
+                        const engagementName = engagement.name.toLowerCase();
                         if (date1 && createdDate < date1) return false;
                         if (date2 && createdDate > date2) return false;
                         if (selectedLead && engagement.lead != selectedLead) return false;
                         if (nameSearch && !engagementName.includes(nameSearch)) return false;
                         return true;
-                    }).filter(engagement => 
-                        !(engagement.status === "Completed" && 
-                          engagement.commit_hash === "Completed" && 
-                          engagement.build_id === "Completed")
+                    });
+
+                    closedEngagements = allEngagements.filter(engagement => 
+                        engagement.status === "Completed" && 
+                        engagement.commit_hash === "Completed" && 
+                        engagement.build_id === "Completed"
                     );
 
-                    const testCasesResults = await Promise.all(
-                        filteredEngagements.map(engagement => fetchTestCases(engagement.id))
-                    );
-
-                    allEngagements = filteredEngagements.map((engagement, index) => ({
-                        ...engagement,
-                        testCases: testCasesResults[index]
-                    }));
-
-                    document.getElementById("totalCount").textContent = `Total Engagements: ${allEngagements.length}`;
-                    currentPage = 1;
-                    renderTable(currentPage);
+                    currentPageOpen = 1;
+                    currentPageClosed = 1;
+                    renderTableOpen(currentPageOpen);
+                    renderTableClosed(currentPageClosed);
+                    updateTotalCount();
                 }, 500);
             } catch (error) {
                 console.error("Error fetching engagements:", error);
@@ -593,6 +744,7 @@
                 });
 
                 showAlert(response.ok ? `${name} saved` : "Failed to update!", response.ok ? "success" : "danger", name);
+                fetchEngagements(); // Refresh data after update
             } catch (error) {
                 showAlert("Error updating engagement!", "danger");
                 console.error("Error:", error);
