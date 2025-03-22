@@ -5,17 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>DefectDojo Engagements</title>
     <style>
-        /* Minimal Bootstrap-inspired CSS */
+        /* Enhanced Bootstrap-inspired CSS */
         :root {
             --bs-blue: #0d6efd;
-            --bs-success: #198754;
+            --bs-success: #28a745;
             --bs-warning: #ffc107;
             --bs-danger: #dc3545;
             --bs-gray-100: #f8f9fa;
             --bs-gray-200: #e9ecef;
+            --bs-dark: #2c3e50;
+            --bs-light: #ffffff;
         }
         body {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background: linear-gradient(135deg, #6e48aa 0%, #9d50bb 100%);
             margin: 0;
             padding: 0;
             height: 100vh;
@@ -24,83 +26,156 @@
             justify-content: center;
             align-items: center;
             overflow: hidden;
-            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         .container {
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            background: var(--bs-light);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             width: 90vw;
             height: 90vh;
             display: flex;
             flex-direction: column;
             overflow-y: auto;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        h1 {
+            color: var(--bs-dark);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+            font-weight: 600;
         }
         .text-center { text-align: center; }
         .mb-4 { margin-bottom: 1.5rem; }
         .mb-2 { margin-bottom: 0.5rem; }
         .d-flex { display: flex; }
         .justify-content-between { justify-content: space-between; }
-        .row { display: flex; flex-wrap: wrap; gap: 10px; }
+        .row { display: flex; flex-wrap: wrap; gap: 15px; }
         .col-md-3, .col-md-2 { flex: 1; min-width: 150px; }
         .text-end { text-align: end; }
         .w-100 { width: 100%; }
 
         .form-control, .form-select, .version-input {
             width: 100%;
-            padding: 8px;
-            border: 1px solid #ced4da;
-            border-radius: 5px;
-            box-sizing: border-box;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+            background: #f0f4f8;
             font-size: 1rem;
+            transition: all 0.3s;
+        }
+        .form-control:focus, .form-select:focus {
+            outline: none;
+            box-shadow: 0 0 5px rgba(13, 110, 253, 0.5);
+            background: #fff;
         }
         .btn {
-            padding: 8px 15px;
+            padding: 10px 20px;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 1rem;
-            transition: all 0.2s;
+            transition: all 0.3s;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
         }
-        .btn:hover { transform: translateY(-2px); }
-        .btn-primary { background: var(--bs-blue); color: white; }
-        .btn-secondary { background: #6c757d; color: white; }
-        .btn-sm { padding: 5px 10px; font-size: 0.875rem; }
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+        .btn-primary {
+            background: linear-gradient(45deg, var(--bs-blue), #5a9bff);
+            color: white;
+        }
+        .btn-secondary {
+            background: linear-gradient(45deg, #6c757d, #95a5a6);
+            color: white;
+        }
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.875rem;
+        }
         .alert {
-            padding: 10px;
-            margin-top: 10px;
-            border-radius: 5px;
+            padding: 12px;
+            margin-top: 15px;
+            border-radius: 8px;
             display: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .alert-success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
-        .alert-danger { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .alert-success {
+            background: linear-gradient(45deg, #d4edda, #e6f7e9);
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .alert-danger {
+            background: linear-gradient(45deg, #f8d7da, #fce4e6);
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
 
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
         }
         th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
+            border: 1px solid #e0e0e0;
+            padding: 10px;
             text-align: center;
             vertical-align: middle;
             white-space: nowrap;
         }
         th {
-            background: var(--bs-gray-200);
+            background: linear-gradient(45deg, var(--bs-gray-200), #f1f3f5);
+            color: var(--bs-dark);
+            font-weight: 600;
             white-space: normal;
             word-wrap: break-word;
+        }
+        td {
+            background: #fafafa;
+            transition: background 0.2s;
+        }
+        tr:hover td {
+            background: #f0f4f8;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+            flex-shrink: 0;
+        }
+        .page-item {
+            padding: 8px 14px;
+            background: var(--bs-gray-100);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .page-item:hover, .page-item.active {
+            background: var(--bs-blue);
+            color: white;
+        }
+
+        /* Invisible CSRF */
+        #csrfToken, .csrf-label {
+            color: #ffffff; /* Fully white to make invisible */
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1 class="text-center mb-4">Engagements Dashboard</h1>
+
         <div class="d-flex justify-content-between mb-2">
             <button class="btn btn-primary" onclick="fetchEngagements()">Refresh Data</button>
-            <span>CSRF Token: <strong id="csrfToken">Fetching...</strong></span>
+            <span class="csrf-label">CSRF Token: <strong id="csrfToken">Fetching...</strong></span>
         </div>
 
         <div class="row mb-2">
@@ -126,6 +201,7 @@
                 <button class="btn btn-secondary w-100" onclick="clearFilters()">Clear Filters</button>
             </div>
         </div>
+
         <table>
             <thead>
                 <tr>
@@ -153,6 +229,7 @@
             <tbody id="engagementsTable"></tbody>
         </table>
 
+        <div class="pagination" id="pagination"></div>
         <div id="alertBox" class="alert"></div>
     </div>
 
@@ -161,6 +238,9 @@
         let csrfToken = '';
         let usersList = [];
         let debounceTimeout;
+        const ROWS_PER_PAGE = 10;
+        let currentPage = 1;
+        let allEngagements = [];
 
         async function fetchCSRF() {
             try {
@@ -179,6 +259,7 @@
                 console.error("Error fetching CSRF Token:", error);
             }
         }
+
         function showAlert(message, type) {
             const alertBox = document.getElementById("alertBox");
             alertBox.className = `alert alert-${type}`;
@@ -230,6 +311,70 @@
             fetchEngagements();
         }
 
+        function renderTable(page) {
+            const tableBody = document.getElementById("engagementsTable");
+            tableBody.innerHTML = "";
+            const start = (page - 1) * ROWS_PER_PAGE;
+            const end = start + ROWS_PER_PAGE;
+            const paginatedEngagements = allEngagements.slice(start, end);
+
+            requestAnimationFrame(() => {
+                paginatedEngagements.forEach((engagement, index) => {
+                    const createdDate = engagement.created.split("T")[0];
+                    const testCases = engagement.testCases || [];
+
+                    const totalJiras = testCases.length;
+                    const completed = testCases.filter(tc => tc.branch_tag === "Completed").length;
+                    const pending = testCases.filter(tc => tc.branch_tag === "Pending").length;
+                    const onHold = testCases.filter(tc => tc.branch_tag === "On Hold").length;
+                    const rejected = testCases.filter(tc => tc.branch_tag === "Rejected").length;
+                    const doableJiras = testCases.filter(tc => tc.build_id === "Closed" || tc.build_id === "To Do").length;
+                    const nonDoableJiras = totalJiras - doableJiras;
+
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${createdDate}</td>
+                        <td>${engagement.name}</td>
+                        <td>${totalJiras}</td>
+                        <td>${completed}</td>
+                        <td>${pending}</td>
+                        <td>${onHold}</td>
+                        <td>${rejected}</td>
+                        <td>${doableJiras}</td>
+                        <td>${nonDoableJiras}</td>
+                        <td>${createDropdown(engagement.status)}</td>
+                        <td>${createDropdown(engagement.commit_hash)}</td>
+                        <td>${createDropdown(engagement.build_id)}</td>
+                        <td>${createLeadDropdown(engagement.lead)}</td>
+                        <td><input type="text" class="version-input" value="${engagement.version || ''}" data-id="${engagement.id}"></td>
+                        <td><button class="btn btn-primary btn-sm" onclick="updateEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', '${engagement.product}', '${engagement.lead}')">Update</button></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            });
+
+            renderPagination();
+        }
+
+        function renderPagination() {
+            const totalPages = Math.ceil(allEngagements.length / ROWS_PER_PAGE);
+            const pagination = document.getElementById("pagination");
+            pagination.innerHTML = "";
+
+            for (let i = 1; i <= totalPages; i++) {
+                const pageItem = document.createElement("div");
+                pageItem.className = `page-item ${i === currentPage ? 'active' : ''}`;
+                pageItem.textContent = i;
+                pageItem.onclick = () => {
+                    currentPage = i;
+                    renderTable(currentPage);
+                    document.querySelectorAll('.page-item').forEach(item => item.classList.remove('active'));
+                    pageItem.classList.add('active');
+                };
+                pagination.appendChild(pageItem);
+            }
+        }
+
         async function fetchEngagements() {
             try {
                 if (debounceTimeout) clearTimeout(debounceTimeout);
@@ -238,9 +383,6 @@
                     const response = await fetch(`${BASE_URL}/engagements/?tags=crm&o=-created`);
                     const data = await response.json();
                     if (!data.results) return;
-
-                    const tableBody = document.getElementById("engagementsTable");
-                    requestAnimationFrame(() => (tableBody.innerHTML = ""));
 
                     const date1 = document.getElementById("date1").value;
                     const date2 = document.getElementById("date2").value;
@@ -257,52 +399,23 @@
                         if (selectedLead && engagement.lead != selectedLead) return false;
                         if (nameSearch && !engagementName.includes(nameSearch)) return false;
                         return true;
-                    });
+                    }).filter(engagement => 
+                        !(engagement.status === "Completed" && 
+                          engagement.commit_hash === "Completed" && 
+                          engagement.build_id === "Completed")
+                    );
 
                     const testCasesResults = await Promise.all(
                         filteredEngagements.map(engagement => fetchTestCases(engagement.id))
                     );
 
-                    requestAnimationFrame(() => {
-                        filteredEngagements.forEach((engagement, index) => {
-                            const createdDate = engagement.created.split("T")[0];
-                            const testCases = testCasesResults[index] || [];
+                    allEngagements = filteredEngagements.map((engagement, index) => ({
+                        ...engagement,
+                        testCases: testCasesResults[index]
+                    }));
 
-                            const totalJiras = testCases.length;
-                            const completed = testCases.filter(tc => tc.branch_tag === "Completed").length;
-                            const pending = testCases.filter(tc => tc.branch_tag === "Pending").length;
-                            const onHold = testCases.filter(tc => tc.branch_tag === "On Hold").length;
-                            const rejected = testCases.filter(tc => tc.branch_tag === "Rejected").length;
-                            const doableJiras = testCases.filter(tc => tc.build_id === "Closed" || tc.build_id === "To Do").length;
-                            const nonDoableJiras = totalJiras - doableJiras;
-
-                            if (engagement.status === "Completed" &&
-                                engagement.commit_hash === "Completed" &&
-                                engagement.build_id === "Completed") {
-                                return;
-                            }
-
-                            const row = document.createElement("tr");
-                            row.innerHTML = `
-                                <td>${createdDate}</td>
-                                <td>${engagement.name}</td>
-                                <td>${totalJiras}</td>
-                                <td>${completed}</td>
-                                <td>${pending}</td>
-                                <td>${onHold}</td>
-                                <td>${rejected}</td>
-                                <td>${doableJiras}</td>
-                                <td>${nonDoableJiras}</td>
-                                <td>${createDropdown(engagement.status)}</td>
-                                <td>${createDropdown(engagement.commit_hash)}</td>
-                                <td>${createDropdown(engagement.build_id)}</td>
-                                <td>${createLeadDropdown(engagement.lead)}</td>
-                                <td><input type="text" class="version-input" value="${engagement.version || ''}" data-id="${engagement.id}"></td>
-                                <td><button class="btn btn-primary btn-sm" onclick="updateEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', '${engagement.product}', '${engagement.lead}')">Update</button></td>
-                            `;
-                            tableBody.appendChild(row);
-                        });
-                    });
+                    currentPage = 1;
+                    renderTable(currentPage);
                 }, 500);
             } catch (error) {
                 console.error("Error fetching engagements:", error);
