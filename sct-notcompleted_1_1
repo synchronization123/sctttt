@@ -39,6 +39,7 @@
             flex-direction: column;
             overflow-y: auto;
             border: 1px solid rgba(255,255,255,0.1);
+            position: relative; /* For alert positioning */
         }
         h1 {
             color: var(--bs-dark);
@@ -96,11 +97,16 @@
             font-size: 0.875rem;
         }
         .alert {
-            padding: 12px;
-            margin-top: 15px;
+            position: absolute;
+            right: 25px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 12px 20px;
             border-radius: 8px;
             display: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 10;
+            max-width: 300px;
         }
         .alert-success {
             background: linear-gradient(45deg, #d4edda, #e6f7e9);
@@ -165,7 +171,15 @@
 
         /* Invisible CSRF */
         #csrfToken, .csrf-label {
-            color: #ffffff; /* Fully white to make invisible */
+            color: #ffffff;
+        }
+
+        /* Total Count */
+        .total-count {
+            font-size: 1.1rem;
+            color: var(--bs-dark);
+            margin-bottom: 10px;
+            font-weight: 500;
         }
     </style>
 </head>
@@ -174,19 +188,21 @@
         <h1 class="text-center mb-4">Engagements Dashboard</h1>
 
         <div class="d-flex justify-content-between mb-2">
-            <button class="btn btn-primary" onclick="fetchEngagements()">Refresh Data</button>
+            <button class="btn btn-primary" onclick="fetchEngagements()">⟳</button>
             <span class="csrf-label">CSRF Token: <strong id="csrfToken">Fetching...</strong></span>
         </div>
+
+        <div class="total-count" id="totalCount">Total Engagements: 0</div>
 
         <div class="row mb-2">
             <!-- Name Search -->
             <div class="col-md-3">
                 <input type="text" id="nameSearch" class="form-control" placeholder="Search by name..." oninput="fetchEngagements()">
             </div>
-            <!-- Lead Filter -->
+            <!-- Lead Filter (Renamed to Select Name) -->
             <div class="col-md-3">
                 <select id="leadFilter" class="form-select" onchange="fetchEngagements()">
-                    <option value="">Select Lead</option>
+                    <option value="">Select Name</option>
                 </select>
             </div>
             <!-- Date Filters -->
@@ -288,7 +304,7 @@
 
                 const leadFilter = document.getElementById("leadFilter");
                 if (leadFilter) {
-                    leadFilter.innerHTML = `<option value="">Select Lead</option>`;
+                    leadFilter.innerHTML = `<option value="">Select Name</option>`;
                     usersList.forEach(user => {
                         const option = document.createElement("option");
                         option.value = user.id;
@@ -361,18 +377,66 @@
             const pagination = document.getElementById("pagination");
             pagination.innerHTML = "";
 
-            for (let i = 1; i <= totalPages; i++) {
-                const pageItem = document.createElement("div");
-                pageItem.className = `page-item ${i === currentPage ? 'active' : ''}`;
-                pageItem.textContent = i;
-                pageItem.onclick = () => {
-                    currentPage = i;
+            // First
+            const firstItem = document.createElement("div");
+            firstItem.className = `page-item ${currentPage === 1 ? 'active' : ''}`;
+            firstItem.textContent = "First";
+            firstItem.onclick = () => {
+                if (currentPage !== 1) {
+                    currentPage = 1;
                     renderTable(currentPage);
-                    document.querySelectorAll('.page-item').forEach(item => item.classList.remove('active'));
-                    pageItem.classList.add('active');
-                };
-                pagination.appendChild(pageItem);
-            }
+                    updatePaginationHighlight();
+                }
+            };
+            pagination.appendChild(firstItem);
+
+            // Previous
+            const prevItem = document.createElement("div");
+            prevItem.className = `page-item ${currentPage === 1 ? '' : ''}`;
+            prevItem.textContent = "Previous";
+            prevItem.onclick = () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderTable(currentPage);
+                    updatePaginationHighlight();
+                }
+            };
+            pagination.appendChild(prevItem);
+
+            // Next
+            const nextItem = document.createElement("div");
+            nextItem.className = `page-item ${currentPage === totalPages ? '' : ''}`;
+            nextItem.textContent = "Next";
+            nextItem.onclick = () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderTable(currentPage);
+                    updatePaginationHighlight();
+                }
+            };
+            pagination.appendChild(nextItem);
+
+            // Last
+            const lastItem = document.createElement("div");
+            lastItem.className = `page-item ${currentPage === totalPages ? 'active' : ''}`;
+            lastItem.textContent = "Last";
+            lastItem.onclick = () => {
+                if (currentPage !== totalPages) {
+                    currentPage = totalPages;
+                    renderTable(currentPage);
+                    updatePaginationHighlight();
+                }
+            };
+            pagination.appendChild(lastItem);
+        }
+
+        function updatePaginationHighlight() {
+            const totalPages = Math.ceil(allEngagements.length / ROWS_PER_PAGE);
+            document.querySelectorAll('.page-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.textContent === "First" && currentPage === 1) item.classList.add('active');
+                if (item.textContent === "Last" && currentPage === totalPages) item.classList.add('active');
+            });
         }
 
         async function fetchEngagements() {
@@ -414,6 +478,7 @@
                         testCases: testCasesResults[index]
                     }));
 
+                    document.getElementById("totalCount").textContent = `Total Engagements: ${allEngagements.length}`;
                     currentPage = 1;
                     renderTable(currentPage);
                 }, 500);
