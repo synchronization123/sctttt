@@ -59,13 +59,14 @@
 
         .form-control, .form-select, .version-input {
             width: 100%;
-            padding: 10px;
+            padding: 8px;
             border: none;
             border-radius: 8px;
             box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
             background: #f0f4f8;
             font-size: 1rem;
             transition: all 0.3s;
+            box-sizing: border-box;
         }
         .form-control:focus, .form-select:focus {
             outline: none;
@@ -80,6 +81,7 @@
             font-size: 1rem;
             transition: all 0.3s;
             box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+            position: relative;
         }
         .btn:hover {
             transform: translateY(-3px);
@@ -97,10 +99,23 @@
             padding: 6px 12px;
             font-size: 0.875rem;
         }
+        .btn:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
         .alert {
             position: absolute;
-            right: 25px; /* Align above Clear Filters */
-            top: 150px; /* Fixed position above filters */
+            right: 25px;
+            top: 150px;
             padding: 8px 15px;
             border-radius: 8px;
             display: none;
@@ -150,7 +165,18 @@
             background: #f0f4f8;
         }
         .highlight-name {
-            background: var(--highlight-green) !important; /* Override hover */
+            background: var(--highlight-green) !important;
+        }
+        /* Adjust column widths to prevent overlap */
+        th:nth-child(1), td:nth-child(1) { min-width: 100px; } /* Created */
+        th:nth-child(2), td:nth-child(2) { min-width: 150px; } /* Name */
+        th:nth-child(3), td:nth-child(3) { min-width: 80px; } /* Total Key */
+        th:nth-child(14), td:nth-child(14) { min-width: 120px; } /* Version */
+        th:nth-child(15), td:nth-child(15) { min-width: 80px; } /* Action */
+        .form-select {
+            padding: 8px 24px 8px 8px; /* Extra padding for dropdown arrow */
+            appearance: none;
+            background: #f0f4f8 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="5" viewBox="0 0 10 5"><path fill="%232c3e50" d="M0 0h10L5 5z"/></svg>') no-repeat right 8px center;
         }
 
         /* Pagination */
@@ -192,7 +218,7 @@
         <h1 class="text-center mb-4">Engagements Dashboard</h1>
 
         <div class="d-flex justify-content-between mb-2">
-            <button class="btn btn-primary" onclick="fetchEngagements()">⟳</button>
+            <button class="btn btn-primary" onclick="fetchEngagements()" data-tooltip="Refresh">⟳</button>
             <span class="csrf-label">CSRF Token: <strong id="csrfToken">Fetching...</strong></span>
         </div>
 
@@ -218,7 +244,7 @@
             </div>
             <!-- Clear Filters Button -->
             <div class="col-md-2 text-end">
-                <button class="btn btn-secondary w-100" onclick="clearFilters()">Clear Filters</button>
+                <button class="btn btn-secondary w-100" onclick="clearFilters()" data-tooltip="Clear Filters">🧹</button>
             </div>
         </div>
 
@@ -280,10 +306,10 @@
             }
         }
 
-        function showAlert(message, type) {
+        function showAlert(message, type, name = null) {
             const alertBox = document.getElementById("alertBox");
             alertBox.className = `alert alert-${type}`;
-            alertBox.innerHTML = message;
+            alertBox.innerHTML = type === "success" && name ? `${name} saved` : message;
             alertBox.style.display = "block";
             setTimeout(() => { alertBox.style.display = "none"; }, 3000);
         }
@@ -368,7 +394,7 @@
                         <td>${createDropdown(engagement.build_id)}</td>
                         <td>${createLeadDropdown(engagement.lead)}</td>
                         <td><input type="text" class="version-input" value="${engagement.version || ''}" data-id="${engagement.id}"></td>
-                        <td><button class="btn btn-primary btn-sm" onclick="updateEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', '${engagement.product}', '${engagement.lead}')">Update</button></td>
+                        <td><button class="btn btn-primary btn-sm" onclick="updateEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', '${engagement.product}', '${engagement.lead}')">Save</button></td>
                     `;
                     tableBody.appendChild(row);
                 });
@@ -552,7 +578,7 @@
                     credentials: "include"
                 });
 
-                showAlert(response.ok ? "Engagement updated!" : "Failed to update!", response.ok ? "success" : "danger");
+                showAlert(response.ok ? `${name} saved` : "Failed to update!", response.ok ? "success" : "danger", name);
             } catch (error) {
                 showAlert("Error updating engagement!", "danger");
                 console.error("Error:", error);
