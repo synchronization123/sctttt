@@ -667,7 +667,7 @@
                         const isCompleted = engagement.status === "Completed" && 
                                            engagement.commit_hash === "Completed" && 
                                            engagement.build_id === "Completed";
-                        return !isCompleted || engagement.active !== false;
+                        return (!isCompleted || engagement.active !== false) && engagement.active === true;
                     }).filter(engagement => {
                         const createdDate = engagement.created.split("T")[0];
                         const engagementName = engagement.name.toLowerCase();
@@ -682,7 +682,15 @@
                         const isCompleted = engagement.status === "Completed" && 
                                            engagement.commit_hash === "Completed" && 
                                            engagement.build_id === "Completed";
-                        return isCompleted && engagement.active === false;
+                        return (isCompleted && engagement.active === false) && engagement.active === false;
+                    }).filter(engagement => {
+                        const createdDate = engagement.created.split("T")[0];
+                        const engagementName = engagement.name.toLowerCase();
+                        if (date1 && createdDate < date1) return false;
+                        if (date2 && createdDate > date2) return false;
+                        if (selectedLead && engagement.lead != selectedLead) return false;
+                        if (nameSearch && !engagementName.includes(nameSearch)) return false;
+                        return true;
                     });
 
                     currentPageOpen = 1;
@@ -807,7 +815,7 @@
                     target_start: engagementData.target_start,
                     target_end: engagementData.target_end,
                     active: false,
-                    status: engagementData.status || "Completed", // Default to "Completed" if not set
+                    status: engagementData.status || "Completed",
                     lead: engagementData.lead,
                     product: engagementData.product
                 };
@@ -857,7 +865,7 @@
                     target_start: engagementData.target_start,
                     target_end: engagementData.target_end,
                     active: true,
-                    status: "Not Started", // Reset to "Not Started" on reopen
+                    status: "Not Started",
                     lead: engagementData.lead,
                     product: engagementData.product
                 };
