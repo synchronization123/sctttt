@@ -485,7 +485,7 @@
                     const pending = testCases.filter(tc => tc.branch_tag === "Pending").length;
                     const onHold = testCases.filter(tc => tc.branch_tag === "On Hold").length;
                     const rejected = testCases.filter(tc => tc.branch_tag === "Rejected").length;
-                    const doableJiras = testCases.filter tc => tc.build_id === "Closed" || tc.build_id === "To Do").length;
+                    const doableJiras = testCases.filter(tc => tc.build_id === "Closed" || tc.build_id === "To Do").length;
                     const nonDoableJiras = totalJiras - doableJiras;
 
                     const row = document.createElement("tr");
