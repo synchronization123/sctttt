@@ -441,7 +441,7 @@
         function showAlert(message, type, name = null) {
             const alertBox = document.getElementById("alertBox");
             alertBox.className = `alert alert-${type}`;
-            alertBox.innerHTML = type === "success" && name ? `${name} closed successfully` : message;
+            alertBox.innerHTML = type === "success" && name ? `${name} ${message}` : message;
             alertBox.style.display = "block";
             setTimeout(() => { alertBox.style.display = "none"; }, 3000);
         }
@@ -565,10 +565,11 @@
                     `;
                     tableBody.appendChild(row);
 
-                    // Add event listeners to dropdowns to enable/disable Close button
+                    // Real-time saving for dropdowns and version input
                     const analystStatus = row.querySelector("td:nth-child(10) select");
                     const mentorStatus = row.querySelector("td:nth-child(11) select");
                     const leadStatus = row.querySelector("td:nth-child(12) select");
+                    const versionInput = row.querySelector(".version-input");
                     const closeBtn = row.querySelector(".close-btn");
 
                     function updateCloseButton() {
@@ -578,9 +579,17 @@
                         closeBtn.disabled = !allCompleted;
                     }
 
-                    analystStatus.addEventListener("change", updateCloseButton);
-                    mentorStatus.addEventListener("change", updateCloseButton);
-                    leadStatus.addEventListener("change", updateCloseButton);
+                    // Save on change and alert on blur
+                    [analystStatus, mentorStatus, leadStatus, versionInput].forEach(element => {
+                        element.addEventListener("change", () => {
+                            updateEngagement(engagement.id, engagement.name, engagement.target_start, engagement.target_end, engagement.product, engagement.lead);
+                            updateCloseButton();
+                        });
+                        element.addEventListener("blur", () => {
+                            showAlert("saved", "success", engagement.name);
+                        });
+                    });
+
                     updateCloseButton(); // Initial check
                 });
             });
@@ -842,13 +851,7 @@
                     credentials: "include"
                 });
 
-                if (response.ok) {
-                    if (isCompleted) {
-                        showAlert(`${name} closed and saved`, "success", name);
-                    } else {
-                        showAlert(`${name} saved`, "success", name);
-                    }
-                } else {
+                if (!response.ok) {
                     showAlert("Failed to update engagement!", "danger");
                 }
 
@@ -982,4 +985,4 @@
         });
     </script>
 </body>
-</html>
+</html>Key Changes
