@@ -99,6 +99,10 @@
             background: linear-gradient(45deg, var(--bs-success), #5cb85c);
             color: white;
         }
+        .btn-danger {
+            background: linear-gradient(45deg, var(--bs-danger), #ff6b6b);
+            color: white;
+        }
         .btn-sm {
             padding: 6px 12px;
             font-size: 0.875rem;
@@ -222,7 +226,7 @@
         th:nth-child(12), td:nth-child(12) { min-width: 120px; } /* Status (Lead) */
         th:nth-child(13), td:nth-child(13) { min-width: 150px; } /* Lead */
         th:nth-child(14), td:nth-child(14) { min-width: 120px; } /* Version */
-        th:nth-child(15), td:nth-child(15) { min-width: 80px; } /* Action */
+        th:nth-child(15), td:nth-child(15) { min-width: 120px; } /* Action */
         .form-select {
             padding: 8px 24px 8px 8px;
             appearance: none;
@@ -505,7 +509,10 @@
                         <td>${createDropdown(engagement.build_id)}</td>
                         <td>${createLeadDropdown(engagement.lead)}</td>
                         <td><input type="text" class="version-input" value="${engagement.version || ''}" data-id="${engagement.id}"></td>
-                        <td><button class="btn btn-primary btn-sm" onclick="updateEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', '${engagement.product}', '${engagement.lead}')">Save</button></td>
+                        <td>
+                            <button class="btn btn-primary btn-sm" onclick="updateEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', '${engagement.product}', '${engagement.lead}')">Save</button>
+                            <button class="btn btn-danger btn-sm" onclick="closeEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', '${engagement.product}', '${engagement.lead}')">Close</button>
+                        </td>
                     `;
                     tableBody.appendChild(row);
                 });
@@ -748,7 +755,7 @@
                     commit_hash: commitHash,
                     build_id: buildId,
                     version,
-                    active: isCompleted ? false : true // Set active: false if all three are "Completed" in Open SCT
+                    active: isCompleted ? false : true
                 };
 
                 console.log("Sending payload:", payload);
@@ -770,37 +777,104 @@
                     showAlert("Failed to update engagement!", "danger");
                 }
 
-                fetchEngagements(); // Refresh data after update
+                fetchEngagements();
             } catch (error) {
                 showAlert("Error updating engagement!", "danger");
                 console.error("Error:", error);
             }
         }
 
-        async function reopenEngagement(engagementId, name, targetStart, targetEnd, product, lead) {
+        async function closeEngagement(engagementId, name, targetStart, targetEnd, product, lead) {
             try {
+                // First, GET the current engagement data
+                const getResponse = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include"
+                });
+
+                if (!getResponse.ok) {
+                    showAlert("Failed to fetch engagement data!", "danger");
+                    return;
+                }
+
+                const engagementData = await getResponse.json();
+
+                // Prepare PUT payload with mandatory parameters
                 const payload = {
-                    active: true,
-                    status: "Not Started",
-                    commit_hash: "Not Started",
-                    build_id: "Not Started",
-                    name,
-                    target_start: targetStart,
-                    target_end: targetEnd,
-                    product,
-                    lead
+                    id: engagementId,
+                    name: engagementData.name,
+                    target_start: engagementData.target_start,
+                    target_end: engagementData.target_end,
+                    active: false,
+                    status: engagementData.status || "Completed", // Default to "Completed" if not set
+                    lead: engagementData.lead,
+                    product: engagementData.product
                 };
 
-                const response = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
-                    method: "PATCH",
+                console.log("Closing payload:", payload);
+
+                // Then, PUT to close the engagement
+                const putResponse = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
+                    method: "PUT",
                     headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
                     body: JSON.stringify(payload),
                     credentials: "include"
                 });
 
-                if (response.ok) {
+                if (putResponse.ok) {
+                    showAlert(`${name} closed`, "success", name);
+                    fetchEngagements();
+                } else {
+                    showAlert("Failed to close engagement!", "danger");
+                }
+            } catch (error) {
+                showAlert("Error closing engagement!", "danger");
+                console.error("Error:", error);
+            }
+        }
+
+        async function reopenEngagement(engagementId, name, targetStart, targetEnd, product, lead) {
+            try {
+                // First, GET the current engagement data
+                const getResponse = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include"
+                });
+
+                if (!getResponse.ok) {
+                    showAlert("Failed to fetch engagement data!", "danger");
+                    return;
+                }
+
+                const engagementData = await getResponse.json();
+
+                // Prepare PUT payload with mandatory parameters
+                const payload = {
+                    id: engagementId,
+                    name: engagementData.name,
+                    target_start: engagementData.target_start,
+                    target_end: engagementData.target_end,
+                    active: true,
+                    status: "Not Started", // Reset to "Not Started" on reopen
+                    lead: engagementData.lead,
+                    product: engagementData.product
+                };
+
+                console.log("Reopening payload:", payload);
+
+                // Then, PUT to reopen the engagement
+                const putResponse = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+                    body: JSON.stringify(payload),
+                    credentials: "include"
+                });
+
+                if (putResponse.ok) {
                     showAlert(`${name} reopened`, "success", name);
-                    fetchEngagements(); // Refresh data after reopening
+                    fetchEngagements();
                 } else {
                     showAlert("Failed to reopen engagement!", "danger");
                 }
