@@ -54,6 +54,7 @@
         .justify-content-between { justify-content: space-between; }
         .row { display: flex; flex-wrap: wrap; gap: 15px; }
         .col-md-3, .col-md-2 { flex: 1; min-width: 150px; }
+        .col-md-2-4 { flex: 0 0 20%; min-width: 120px; } /* Adjusted for 5 filters */
         .text-end { text-align: end; }
         .w-100 { width: 100%; }
 
@@ -423,7 +424,7 @@
                         <th rowspan="2">Total Key</th>
                         <th colspan="4" class="text-center">Analysis Status</th>
                         <th colspan="2" class="text-center">Jira Status</th>
-                        <th rowspan="2">Status (Analyst)</ personally>
+                        <th rowspan="2">Status (Analyst)</th>
                         <th rowspan="2">Status (Mentor)</th>
                         <th rowspan="2">Status (Lead)</th>
                         <th rowspan="2">Lead</th>
@@ -453,27 +454,33 @@
         <div id="testCasesModal" class="modal">
             <h2>Test Cases</h2>
             <div class="row mb-2">
-                <div class="col-md-3">
+                <div class="col-md-2-4">
                     <select id="filterType" class="form-select" onchange="applyTestCasesFilters()">
                         <option value="">Filter by Type</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2-4">
                     <select id="filterIssueType" class="form-select" onchange="applyTestCasesFilters()">
                         <option value="">Filter by Issue Type</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2-4">
                     <select id="filterJiraStatus" class="form-select" onchange="applyTestCasesFilters()">
                         <option value="">Filter by Jira Status</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2-4">
                     <select id="filterStatus" class="form-select" onchange="applyTestCasesFilters()">
                         <option value="">Filter by Status</option>
                     </select>
                 </div>
+                <div class="col-md-2-4">
+                    <select id="filterAssignedTo" class="form-select" onchange="applyTestCasesFilters()">
+                        <option value="">Filter by Assigned To</option>
+                    </select>
+                </div>
             </div>
+            <div class="total-count" id="testCasesCount">Total Test Cases: 0</div>
             <table id="testCasesTable">
                 <thead>
                     <tr>
@@ -925,9 +932,11 @@
                     testCases = testCases.filter(tc => tc.branch_tag === filter);
                 }
 
-                // Fetch environment names for all test cases
+                // Fetch environment names and set lead names for all test cases
                 await Promise.all(testCases.map(async tc => {
                     tc.environmentName = await fetchEnvironmentName(tc.environment);
+                    const lead = usersList.find(user => user.id == tc.lead);
+                    tc.leadName = lead ? `${lead.first_name} ${lead.last_name}` : 'Unassigned';
                 }));
 
                 filteredTestCases = [...testCases];
@@ -950,16 +959,19 @@
             const issueTypeFilter = document.getElementById("filterIssueType");
             const jiraStatusFilter = document.getElementById("filterJiraStatus");
             const statusFilter = document.getElementById("filterStatus");
+            const assignedToFilter = document.getElementById("filterAssignedTo");
 
             const uniqueTypes = [...new Set(testCases.map(tc => tc.environmentName || 'N/A'))].sort();
             const uniqueIssueTypes = [...new Set(testCases.map(tc => tc.commit_hash || 'N/A'))].sort();
             const uniqueJiraStatuses = [...new Set(testCases.map(tc => tc.build_id || 'N/A'))].sort();
             const uniqueStatuses = [...new Set(testCases.map(tc => tc.branch_tag || 'N/A'))].sort();
+            const uniqueAssignedTos = [...new Set(testCases.map(tc => tc.leadName || 'Unassigned'))].sort();
 
             typeFilter.innerHTML = '<option value="">Filter by Type</option>' + uniqueTypes.map(val => `<option value="${val}">${val}</option>`).join('');
             issueTypeFilter.innerHTML = '<option value="">Filter by Issue Type</option>' + uniqueIssueTypes.map(val => `<option value="${val}">${val}</option>`).join('');
             jiraStatusFilter.innerHTML = '<option value="">Filter by Jira Status</option>' + uniqueJiraStatuses.map(val => `<option value="${val}">${val}</option>`).join('');
             statusFilter.innerHTML = '<option value="">Filter by Status</option>' + uniqueStatuses.map(val => `<option value="${val}">${val}</option>`).join('');
+            assignedToFilter.innerHTML = '<option value="">Filter by Assigned To</option>' + uniqueAssignedTos.map(val => `<option value="${val}">${val}</option>`).join('');
         }
 
         function applyTestCasesFilters() {
@@ -967,12 +979,14 @@
             const issueTypeFilter = document.getElementById("filterIssueType").value;
             const jiraStatusFilter = document.getElementById("filterJiraStatus").value;
             const statusFilter = document.getElementById("filterStatus").value;
+            const assignedToFilter = document.getElementById("filterAssignedTo").value;
 
             filteredTestCases = testCases.filter(tc => {
                 return (!typeFilter || tc.environmentName === typeFilter) &&
                        (!issueTypeFilter || tc.commit_hash === issueTypeFilter) &&
                        (!jiraStatusFilter || tc.build_id === jiraStatusFilter) &&
-                       (!statusFilter || tc.branch_tag === statusFilter);
+                       (!statusFilter || tc.branch_tag === statusFilter) &&
+                       (!assignedToFilter || tc.leadName === assignedToFilter);
             });
 
             currentTestCasesPage = 1;
@@ -986,10 +1000,10 @@
             const end = start + TEST_CASES_PER_PAGE;
             const paginatedTestCases = filteredTestCases.slice(start, end);
 
+            document.getElementById("testCasesCount").textContent = `Total Test Cases: ${filteredTestCases.length}`;
+
             requestAnimationFrame(() => {
                 paginatedTestCases.forEach(tc => {
-                    const lead = usersList.find(user => user.id == tc.lead);
-                    const leadName = lead ? `${lead.first_name} ${lead.last_name}` : 'Unassigned';
                     const row = document.createElement("tr");
                     row.innerHTML = `
                         <td>${tc.id}</td>
@@ -997,7 +1011,7 @@
                         <td>${tc.description || ''}</td>
                         <td>${tc.version || ''}</td>
                         <td>${tc.branch_tag || 'N/A'}</td>
-                        <td>${leadName}</td>
+                        <td>${tc.leadName}</td>
                         <td>${tc.environmentName || 'N/A'}</td>
                         <td>${tc.commit_hash || 'N/A'}</td>
                         <td>${tc.build_id || 'N/A'}</td>
@@ -1281,4 +1295,4 @@
         });
     </script>
 </body>
-</html>Key
+</html>
