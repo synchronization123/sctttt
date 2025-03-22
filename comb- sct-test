@@ -519,7 +519,8 @@
         let testCases = [];
         let filteredTestCases = [];
         let environmentCache = {};
-        const EXCLUDED_USER_IDS = [1, 9, 6, 7, 8];
+        let allTestCases = []; // To store all test cases across engagements
+        const PRIVILEGED_USER_IDS = [1, 9, 6, 7, 8];
 
         async function fetchCSRF() {
             try {
@@ -656,23 +657,53 @@
             const end = start + ROWS_PER_PAGE;
             const paginatedEngagements = openEngagements.slice(start, end);
 
+            const isPrivilegedUser = PRIVILEGED_USER_IDS.includes(loggedInUserId);
+            const userAssignedTestCases = allTestCases.filter(tc => tc.lead == loggedInUserId);
+            const hasLeadInTests = allTestCases.some(tc => tc.lead == loggedInUserId);
+
             requestAnimationFrame(() => {
                 paginatedEngagements.forEach((engagement, index) => {
                     const createdDate = engagement.created.split("T")[0];
                     const testCases = engagement.testCases || [];
-                    const userTestCases = testCases.filter(tc => tc.lead == loggedInUserId && !EXCLUDED_USER_IDS.includes(loggedInUserId));
+                    let displayTestCases = testCases;
 
-                    const totalJiras = userTestCases.length;
-                    const completed = userTestCases.filter(tc => tc.branch_tag === "Completed").length;
-                    const pending = userTestCases.filter(tc => tc.branch_tag === "Pending").length;
-                    const onHold = userTestCases.filter(tc => tc.branch_tag === "On Hold").length;
-                    const rejected = userTestCases.filter(tc => tc.branch_tag === "Rejected").length;
-                    const doableJiras = userTestCases.filter(tc => tc.build_id === "Closed" || tc.build_id === "To Do").length;
-                    const nonDoableJiras = totalJiras - doableJiras;
+                    let totalJiras, completed, pending, onHold, rejected, doableJiras, nonDoableJiras;
+
+                    if (isPrivilegedUser) {
+                        // Privileged users see all test cases
+                        displayTestCases = testCases;
+                        totalJiras = testCases.length;
+                        completed = testCases.filter(tc => tc.branch_tag === "Completed").length;
+                        pending = testCases.filter(tc => tc.branch_tag === "Pending").length;
+                        onHold = testCases.filter(tc => tc.branch_tag === "On Hold").length;
+                        rejected = testCases.filter(tc => tc.branch_tag === "Rejected").length;
+                        doableJiras = testCases.filter(tc => tc.build_id === "Closed" || tc.build_id === "To Do").length;
+                        nonDoableJiras = totalJiras - doableJiras;
+                    } else if (hasLeadInTests) {
+                        // Show counts of all assigned test cases across engagements if lead in any test
+                        displayTestCases = testCases.filter(tc => tc.lead == loggedInUserId);
+                        totalJiras = userAssignedTestCases.length;
+                        completed = userAssignedTestCases.filter(tc => tc.branch_tag === "Completed").length;
+                        pending = userAssignedTestCases.filter(tc => tc.branch_tag === "Pending").length;
+                        onHold = userAssignedTestCases.filter(tc => tc.branch_tag === "On Hold").length;
+                        rejected = userAssignedTestCases.filter(tc => tc.branch_tag === "Rejected").length;
+                        doableJiras = userAssignedTestCases.filter(tc => tc.build_id === "Closed" || tc.build_id === "To Do").length;
+                        nonDoableJiras = totalJiras - doableJiras;
+                    } else {
+                        // Default: only assigned test cases in this engagement
+                        displayTestCases = testCases.filter(tc => tc.lead == loggedInUserId);
+                        totalJiras = displayTestCases.length;
+                        completed = displayTestCases.filter(tc => tc.branch_tag === "Completed").length;
+                        pending = displayTestCases.filter(tc => tc.branch_tag === "Pending").length;
+                        onHold = displayTestCases.filter(tc => tc.branch_tag === "On Hold").length;
+                        rejected = displayTestCases.filter(tc => tc.branch_tag === "Rejected").length;
+                        doableJiras = displayTestCases.filter(tc => tc.build_id === "Closed" || tc.build_id === "To Do").length;
+                        nonDoableJiras = totalJiras - doableJiras;
+                    }
 
                     const row = document.createElement("tr");
                     row.dataset.id = engagement.id;
-                    const isLead = engagement.lead == loggedInUserId;
+                    const isLead = engagement.lead == loggedInUserId || isPrivilegedUser;
                     row.innerHTML = `
                         <td>${createdDate}</td>
                         <td class="${totalJiras === (completed + rejected) ? 'highlight-name' : ''}">${engagement.name}</td>
@@ -736,19 +767,49 @@
             const end = start + ROWS_PER_PAGE;
             const paginatedEngagements = closedEngagements.slice(start, end);
 
+            const isPrivilegedUser = PRIVILEGED_USER_IDS.includes(loggedInUserId);
+            const userAssignedTestCases = allTestCases.filter(tc => tc.lead == loggedInUserId);
+            const hasLeadInTests = allTestCases.some(tc => tc.lead == loggedInUserId);
+
             requestAnimationFrame(() => {
                 paginatedEngagements.forEach(engagement => {
                     const createdDate = engagement.created.split("T")[0];
                     const testCases = engagement.testCases || [];
-                    const userTestCases = testCases.filter(tc => tc.lead == loggedInUserId && !EXCLUDED_USER_IDS.includes(loggedInUserId));
+                    let displayTestCases = testCases;
 
-                    const totalJiras = userTestCases.length;
-                    const completed = userTestCases.filter(tc => tc.branch_tag === "Completed").length;
-                    const pending = userTestCases.filter(tc => tc.branch_tag === "Pending").length;
-                    const onHold = userTestCases.filter(tc => tc.branch_tag === "On Hold").length;
-                    const rejected = userTestCases.filter(tc => tc.branch_tag === "Rejected").length;
-                    const doableJiras = userTestCases.filter(tc => tc.build_id === "Closed" || tc.build_id === "To Do").length;
-                    const nonDoableJiras = totalJiras - doableJiras;
+                    let totalJiras, completed, pending, onHold, rejected, doableJiras, nonDoableJiras;
+
+                    if (isPrivilegedUser) {
+                        // Privileged users see all test cases
+                        displayTestCases = testCases;
+                        totalJiras = testCases.length;
+                        completed = testCases.filter(tc => tc.branch_tag === "Completed").length;
+                        pending = testCases.filter(tc => tc.branch_tag === "Pending").length;
+                        onHold = testCases.filter(tc => tc.branch_tag === "On Hold").length;
+                        rejected = testCases.filter(tc => tc.branch_tag === "Rejected").length;
+                        doableJiras = testCases.filter(tc => tc.build_id === "Closed" || tc.build_id === "To Do").length;
+                        nonDoableJiras = totalJiras - doableJiras;
+                    } else if (hasLeadInTests) {
+                        // Show counts of all assigned test cases across engagements if lead in any test
+                        displayTestCases = testCases.filter(tc => tc.lead == loggedInUserId);
+                        totalJiras = userAssignedTestCases.length;
+                        completed = userAssignedTestCases.filter(tc => tc.branch_tag === "Completed").length;
+                        pending = userAssignedTestCases.filter(tc => tc.branch_tag === "Pending").length;
+                        onHold = userAssignedTestCases.filter(tc => tc.branch_tag === "On Hold").length;
+                        rejected = userAssignedTestCases.filter(tc => tc.branch_tag === "Rejected").length;
+                        doableJiras = userAssignedTestCases.filter(tc => tc.build_id === "Closed" || tc.build_id === "To Do").length;
+                        nonDoableJiras = totalJiras - doableJiras;
+                    } else {
+                        // Default: only assigned test cases in this engagement
+                        displayTestCases = testCases.filter(tc => tc.lead == loggedInUserId);
+                        totalJiras = displayTestCases.length;
+                        completed = displayTestCases.filter(tc => tc.branch_tag === "Completed").length;
+                        pending = displayTestCases.filter(tc => tc.branch_tag === "Pending").length;
+                        onHold = displayTestCases.filter(tc => tc.branch_tag === "On Hold").length;
+                        rejected = displayTestCases.filter(tc => tc.branch_tag === "Rejected").length;
+                        doableJiras = displayTestCases.filter(tc => tc.build_id === "Closed" || tc.build_id === "To Do").length;
+                        nonDoableJiras = totalJiras - doableJiras;
+                    }
 
                     const row = document.createElement("tr");
                     row.dataset.id = engagement.id;
@@ -877,6 +938,12 @@
                         testCases: testCasesResults[index]
                     }));
 
+                    // Aggregate all test cases for global access
+                    allTestCases = [];
+                    allEngagements.forEach(engagement => {
+                        allTestCases = allTestCases.concat(engagement.testCases);
+                    });
+
                     openEngagements = allEngagements.filter(engagement => {
                         const isCompleted = engagement.status === "Completed" && 
                                            engagement.commit_hash === "Completed" && 
@@ -934,7 +1001,13 @@
             try {
                 const response = await fetch(`${BASE_URL}/tests/?engagement=${engagementId}`);
                 const data = await response.json();
-                testCases = (data.results || []).filter(tc => tc.lead == loggedInUserId && !EXCLUDED_USER_IDS.includes(loggedInUserId));
+                const isPrivilegedUser = PRIVILEGED_USER_IDS.includes(loggedInUserId);
+                
+                if (isPrivilegedUser) {
+                    testCases = data.results || [];
+                } else {
+                    testCases = (data.results || []).filter(tc => tc.lead == loggedInUserId);
+                }
 
                 if (filter !== 'all') {
                     testCases = testCases.filter(tc => tc.branch_tag === filter);
@@ -1220,7 +1293,7 @@
                 console.log("Closing payload:", payload);
 
                 // Then, PUT to close the engagement
-                const aputResponse = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
+                const putResponse = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
                     body: JSON.stringify(payload),
