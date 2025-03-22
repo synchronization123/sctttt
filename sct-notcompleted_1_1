@@ -446,17 +446,16 @@
             setTimeout(() => { alertBox.style.display = "none"; }, 3000);
         }
 
-        function showModal(engagementId, name) {
+        function showModal(name) {
             const modal = document.getElementById("closeModal");
             const overlay = document.getElementById("modalOverlay");
             const modalContent = document.getElementById("modalContent");
-            modalContent.innerHTML = `Closing at: <a href="https://demo.defectdojo.org/engagement/${engagementId}/close" target="_blank">https://demo.defectdojo.org/engagement/${engagementId}/close</a>`;
+            modalContent.innerHTML = `${name} closed successfully`;
             modal.style.display = "block";
             overlay.style.display = "block";
             setTimeout(() => {
                 modal.style.display = "none";
                 overlay.style.display = "none";
-                showAlert(`${name} closed successfully`, "success", name);
             }, 2000);
         }
 
@@ -862,6 +861,15 @@
 
         async function closeEngagement(engagementId, name, targetStart, targetEnd, product, lead) {
             try {
+                // Execute URL in background
+                fetch(`https://demo.defectdojo.org/engagement/${engagementId}/close`, {
+                    method: "GET",
+                    credentials: "include"
+                }).catch(error => console.error("Background URL fetch failed:", error));
+
+                // Show modal with success message
+                showModal(name);
+
                 // First, GET the current engagement data
                 const getResponse = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
                     method: "GET",
@@ -899,7 +907,6 @@
                 });
 
                 if (putResponse.ok) {
-                    showModal(engagementId, name);
                     fetchEngagements();
                 } else {
                     showAlert("Failed to close engagement!", "danger");
