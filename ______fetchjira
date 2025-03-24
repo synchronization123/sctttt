@@ -1,0 +1,121 @@
+import requests
+import json
+from datetime import datetime
+
+# Constants
+DEFECTDOJO_API = "https://demo.defectdojo.org/api/v2"
+JIRA_API = "https://jira.alm.demo.com/rest/api/2/search"
+DEFECTDOJO_TOKEN = "ftoken sjdjdnndd"
+JIRA_TOKEN = "f bearer dkdjdnndd"
+HEADERS = {"Content-Type": "application/json"}
+LOG_ENGAGEMENT_ID = 63596
+
+def get_engagements_with_sct():
+    url = f"{DEFECTDOJO_API}/engagements/?tags=sct"
+    response = requests.get(url, headers={"Authorization": DEFECTDOJO_TOKEN, **HEADERS})
+    return response.json()['results']
+
+def create_jql(engagement_name):
+    if engagement_name.startswith('V'):
+        modified_name = 'R' + engagement_name[1:]
+    else:
+        modified_name = engagement_name
+    return f'"Build(s)"="{engagement_name}" OR "Build(s)"="{modified_name}"'
+
+def get_jira_issues(jql):
+    all_issues = []
+    start_at = 0
+    max_results = 1000
+    
+    while True:
+        payload = {
+            "jql": jql,
+            "startAt": start_at,
+            "maxResults": max_results
+        }
+        response = requests.post(JIRA_API, 
+                               headers={"Authorization": JIRA_TOKEN, **HEADERS},
+                               json=payload)
+        data = response.json()
+        all_issues.extend(data['issues'])
+        
+        if start_at + max_results >= data['total']:
+            break
+        start_at += max_results
+    
+    return all_issues
+
+def create_test(engagement, jira_issue):
+    url = f"{DEFECTDOJO_API}/tests/"
+    environment = 9 if 'develop' in engagement['name'].lower() else 10
+    
+    payload = {
+        "engagement": engagement['id'],
+        "tags": ["mcr_jira"],
+        "test_type_name": "mcr_jjra",
+        "scan_type": "mcr_jira",
+        "title": jira_issue['key'],
+        "target_start": engagement['target_start'],
+        "target_end": engagement['target_end'],
+        "lead": 2,
+        "version": engagement['name'],
+        "build_id": jira_issue['key'],
+        "status": jira_issue['fields']['status']['name'],
+        "branch_tag": "Pending",
+        "commit_hash": jira_issue['fields']['issuetype']['name'],
+        "test_type": 205,
+        "environment": environment
+    }
+    
+    response = requests.post(url, 
+                           headers={"Authorization": DEFECTDOJO_TOKEN, **HEADERS},
+                           json=payload)
+    return response.status_code == 201
+
+def update_engagement_tags(engagement):
+    url = f"{DEFECTDOJO_API}/engagements/{engagement['id']}/"
+    payload = {
+        "tags": engagement.get('tags', []) + ["jira_fetched"]
+    }
+    response = requests.patch(url, 
+                            headers={"Authorization": DEFECTDOJO_TOKEN, **HEADERS},
+                            json=payload)
+    return response.status_code == 200
+
+def log_to_engagement_63596(engagement, jira_count):
+    url = f"{DEFECTDOJO_API}/engagements/{LOG_ENGAGEMENT_ID}/"
+    timestamp = datetime.now().strftime("%m/%d/%Y : %I : %M %p EST")
+    log_entry = f"{timestamp} : fetched {jira_count} jiras for {engagement['name']}"
+    
+    # Get current description
+    response = requests.get(url, headers={"Authorization": DEFECTDOJO_TOKEN, **HEADERS})
+    current_desc = response.json().get('description', '')
+    
+    # Append new log entry
+    updated_desc = f"{current_desc} | {log_entry}" if current_desc else log_entry
+    
+    payload = {"description": updated_desc}
+    response = requests.patch(url, 
+                            headers={"Authorization": DEFECTDOJO_TOKEN, **HEADERS},
+                            json=payload)
+    return response.status_code == 200
+
+def main():
+    engagements = get_engagements_with_sct()
+    
+    for engagement in engagements:
+        if "jira_fetched" in engagement.get('tags', []):
+            continue
+            
+        jql = create_jql(engagement['name'])
+        jira_issues = get_jira_issues(jql)
+        
+        for issue in jira_issues:
+            create_test(engagement, issue)
+        
+        # Log to engagement 63596 and update tags
+        log_to_engagement_63596(engagement, len(jira_issues))
+        update_engagement_tags(engagement)
+
+if __name__ == "__main__":
+    main()
