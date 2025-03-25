@@ -53,25 +53,31 @@ let summaryContent = `
     </table>
 `;
 
-// Add event listeners for Contrast Verification dropdown and Description save button
-document.querySelectorAll('.contrast-verification-dropdown').forEach(dropdown => {
-    dropdown.addEventListener('change', async () => {
-        const engagementId = dropdown.dataset.id;
-        const newValue = dropdown.value;
+// Combine with other sections (assuming buildContent and securityAnalysisContent are defined elsewhere)
+const reportContent = `${summaryContent}${buildContent}${securityAnalysisContent}`;
+document.getElementById("reportContent").innerHTML = reportContent;
+
+// Add event listeners after DOM update
+const contrastDropdown = document.querySelector('.contrast-verification-dropdown');
+if (contrastDropdown) {
+    contrastDropdown.addEventListener('change', async () => {
+        const engagementId = contrastDropdown.dataset.id;
+        const newValue = contrastDropdown.value;
         await updateEngagement(engagementId, { reason: newValue }, engagement.name);
         showAlert("Contrast Verification Saved", "success", engagement.name);
     });
-});
+}
 
-document.querySelectorAll('.save-description-btn').forEach(button => {
-    button.addEventListener('click', async () => {
-        const engagementId = button.dataset.id;
-        const textarea = document.querySelector(`.engagement-description-textarea[data-id="${engagementId}"]`);
+const saveButton = document.querySelector('.save-description-btn');
+const textarea = document.querySelector('.engagement-description-textarea');
+if (saveButton && textarea) {
+    saveButton.addEventListener('click', async () => {
+        const engagementId = saveButton.dataset.id;
         const newDescription = textarea.value;
         await updateEngagement(engagementId, { description: newDescription }, engagement.name);
         showAlert("Description Saved", "success", engagement.name);
     });
-});
+}
 
 // Function to update engagement via API
 async function updateEngagement(engagementId, payload, engagementName) {
@@ -79,8 +85,8 @@ async function updateEngagement(engagementId, payload, engagementName) {
         const response = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
             method: "PATCH",
             headers: { 
-                "Content-Type": "application/json", 
-                "X-CSRFToken": csrfToken 
+                "Content-Type": "application/json",
+                "X-CSRFToken": window.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]').value // Ensure CSRF token is available
             },
             body: JSON.stringify(payload),
             credentials: "include"
@@ -88,14 +94,15 @@ async function updateEngagement(engagementId, payload, engagementName) {
 
         if (response.ok) {
             console.log(`Updated engagement ${engagementId} with ${JSON.stringify(payload)}`);
-            // Update local engagement object to reflect changes
             const engagement = openEngagements.find(eng => eng.id == engagementId);
-            Object.assign(engagement, payload);
+            Object.assign(engagement, payload); // Update local data
         } else {
-            showAlert(`Failed to update engagement ${engagementId}!`, "danger");
+            const errorText = await response.text();
+            console.error(`Failed to update engagement ${engagementId}: ${errorText}`);
+            showAlert(`Failed to update engagement: ${response.statusText}`, "danger");
         }
     } catch (error) {
-        showAlert("Error updating engagement!", "danger");
-        console.error("Error:", error);
+        console.error("Error updating engagement:", error);
+        showAlert("Error updating engagement: " + error.message, "danger");
     }
 }
