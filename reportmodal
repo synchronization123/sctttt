@@ -1,0 +1,203 @@
+function showReportModal() {
+    const modal = document.getElementById("reportModal");
+    const overlay = document.getElementById("modalOverlay");
+    const select = document.getElementById("reportEngagementSelect");
+
+    // Populate dropdown with Open SCT engagements
+    select.innerHTML = '<option value="">Select an Engagement</option>' + 
+        openEngagements.map(eng => `<option value="${eng.id}">${eng.name}</option>`).join('');
+
+    // Clear previous report content
+    document.getElementById("reportContent").innerHTML = '';
+
+    modal.style.display = "block";
+    overlay.style.display = "block";
+}
+
+function closeReportModal() {
+    const modal = document.getElementById("reportModal");
+    const overlay = document.getElementById("modalOverlay");
+    modal.style.display = "none";
+    overlay.style.display = "none";
+}
+
+async function generateReport() {
+    const engagementId = document.getElementById("reportEngagementSelect").value;
+    if (!engagementId) {
+        document.getElementById("reportContent").innerHTML = '<p style="color: #721c24;">Please select an engagement to generate the report.</p>';
+        return;
+    }
+
+    const engagement = openEngagements.find(eng => eng.id == engagementId);
+    if (!engagement) {
+        document.getElementById("reportContent").innerHTML = '<p style="color: #721c24;">Engagement not found!</p>';
+        return;
+    }
+
+    // Ensure test cases are fetched for Summary and Build sections
+    if (!engagement.testCases || engagement.testCases.length === 0) {
+        const response = await fetch(`${BASE_URL}/tests/?engagement=${engagement.id}`);
+        const data = await response.json();
+        engagement.testCases = data.results || [];
+    }
+
+    const testCases = engagement.testCases;
+    const today = new Date().toISOString().split('T')[0];
+    const functionalJiras = testCases.filter(tc => tc.commit_hash !== "Security").length;
+    const securityJiras = testCases.filter(tc => tc.commit_hash === "Security").length;
+
+    // Section 1: Summary
+    let summaryContent = `
+        <h3 style="color: var(--bs-blue); margin-top: 20px;">Summary</h3>
+        <p><strong>Name:</strong> ${engagement.name}</p>
+        <p><strong>Category:</strong> Activity</p>
+        <p><strong>Total Changelogs:</strong></p>
+        <ul>
+            <li>Number of Functional Jira: ${functionalJiras}</li>
+            <li>Number of Security Jira: ${securityJiras}</li>
+        </ul>
+        <p><strong>Contrast Verification:</strong> ${engagement.contrast_deployed ? 'Yes' : 'No'}</p>
+        <p><strong>Conclusion:</strong></p>
+        <ul>
+            <li>Security Jira found: ${securityJiras}</li>
+            <li>Manual Code Review: Done</li>
+            <li>Logical Testing: Done</li>
+            <li>Did we close/Change status to Done for all Security Jiras? No</li>
+            <li>Functional Jira Count: ${functionalJiras}</li>
+            <li>Did we download the patch and reviewed all files? No</li>
+            <li>What are the files/folders we haven't covered or reviewed and why? <em>Not specified</em></li>
+            <li>Did we find any vulnerability while review? No</li>
+            <li>Following is the Security Analysis: <em>See Security Analysis section below</em></li>
+        </ul>
+    `;
+
+    // Section 2: Build
+    const reviewers = [...new Set(testCases.map(tc => {
+        const lead = usersList.find(user => user.id == tc.lead);
+        return lead ? `${lead.first_name} ${lead.last_name}` : 'Unassigned';
+    }))].join(', ');
+    let buildContent = `
+        <h3 style="color: var(--bs-blue); margin-top: 20px;">Build</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <thead>
+                <tr style="background: var(--bs-gray-200);">
+                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Build</th>
+                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Date</th>
+                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Total No. of Jiras</th>
+                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Changelog Reviewers</th>
+                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Total Time Taken</th>
+                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Issue Key</th>
+                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Test Approach</th>
+                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Manual Secure Code Review</th>
+                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Manual Security Testing</th>
+                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Remark/Comment</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    testCases.forEach(tc => {
+        const isSecurity = tc.commit_hash === "Security";
+        const secureCodeReview = tc.description && tc.description.toLowerCase().includes("secure code review: done") ? "Done" : "Not Done";
+        const manualTesting = tc.description && tc.description.toLowerCase().includes("manual testing: na") ? "NA" : "Done";
+        buildContent += `
+            <tr style="background: #fafafa;">
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">${engagement.name}</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">${today}</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">${testCases.length}</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">${reviewers}</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">N/A</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">${tc.id}</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">${isSecurity ? 'Security Jira' : 'Functional Jira'}</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">${secureCodeReview}</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">${manualTesting}</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">${tc.description || 'N/A'}</td>
+            </tr>
+        `;
+    });
+    buildContent += `
+            </tbody>
+        </table>
+    `;
+
+    // Section 3: Security Analysis (Fetched from API)
+    const securityResponse = await fetch(`${BASE_URL}/tests/?engagement=${engagementId}&tags=risk_register`);
+    const securityData = await securityResponse.json();
+    const securityTests = securityData.results || [];
+
+    let securityAnalysisContent = `
+        <h3 style="color: var(--bs-blue); margin-top: 20px;">Security Analysis</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <thead>
+                <tr style="background: var(--bs-gray-200);">
+                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Sr. No.</th>
+                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Category</th>
+                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Status</th>
+                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Comment</th>
+                </tr>
+            </thead>
+            <tbody id="securityAnalysisTableBody">
+    `;
+    securityTests.forEach((test, index) => {
+        const statusOptions = ["NA", "Found by code review", "Found by Manual Testing", "Not found"];
+        const selectedStatus = test.commit_hash || "NA";
+        securityAnalysisContent += `
+            <tr style="background: #fafafa;" data-id="${test.id}">
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">${index + 1}</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">${test.title || 'N/A'}</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">
+                    <select class="form-select security-status-dropdown" data-id="${test.id}">
+                        ${statusOptions.map(option => `<option value="${option}" ${option === selectedStatus ? 'selected' : ''}>${option}</option>`).join('')}
+                    </select>
+                </td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">${test.branch_tag || 'N/A'}</td>
+            </tr>
+        `;
+    });
+    securityAnalysisContent += `
+            </tbody>
+        </table>
+    `;
+
+    // Combine all sections
+    const reportContent = `${summaryContent}${buildContent}${securityAnalysisContent}`;
+    document.getElementById("reportContent").innerHTML = reportContent;
+
+    // Add event listeners for autosaving dropdown changes
+    document.querySelectorAll('.security-status-dropdown').forEach(dropdown => {
+        dropdown.addEventListener('change', async () => {
+            const testId = dropdown.dataset.id;
+            const newStatus = dropdown.value;
+            await updateSecurityTest(testId, newStatus, engagement.name);
+        });
+        dropdown.addEventListener('blur', () => {
+            showAlert("Saved", "success", engagement.name);
+        });
+    });
+}
+
+// Function to update security test status via API
+async function updateSecurityTest(testId, newStatus, engagementName) {
+    try {
+        const payload = {
+            commit_hash: newStatus
+        };
+        const response = await fetch(`${BASE_URL}/tests/${testId}/`, {
+            method: "PATCH",
+            headers: { 
+                "Content-Type": "application/json", 
+                "X-CSRFToken": csrfToken 
+            },
+            body: JSON.stringify(payload),
+            credentials: "include"
+        });
+
+        if (response.ok) {
+            console.log(`Updated test ${testId} status to ${newStatus}`);
+        } else {
+            showAlert(`Failed to update status for test ${testId}!`, "danger");
+        }
+    } catch (error) {
+        showAlert("Error updating security test status!", "danger");
+        console.error("Error:", error);
+    }
+}
