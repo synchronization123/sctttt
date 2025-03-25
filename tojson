@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Table Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .drop-zone {
+            border: 2px dashed #007bff;
+            padding: 40px;
+            text-align: center;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .drop-zone:hover {
+            background: #f0f7ff;
+            border-color: #0056b3;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #007bff;
+            color: white;
+            position: relative;
+        }
+
+        .filter-input {
+            width: 100%;
+            padding: 5px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        button, .checkbox-label {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .checkbox-label {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+        }
+
+        .checkbox-label.active {
+            background: #007bff;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            th, td {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>JSON Table Viewer</h1>
+            <button id="exportBtn" style="display: none;">Export to Excel</button>
+        </div>
+        
+        <div class="drop-zone" id="dropZone">
+            Drag and drop JSON file here or click to upload
+            <input type="file" id="fileInput" accept=".json" style="display: none;">
+        </div>
+
+        <div id="controls" style="display: none;"></div>
+        <div id="tableContainer" style="overflow-x: auto;"></div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const tableContainer = document.getElementById('tableContainer');
+        const controls = document.getElementById('controls');
+        const exportBtn = document.getElementById('exportBtn');
+
+        let tableData = [];
+        let columns = [];
+        let visibleColumns = new Set();
+
+        // Drag and drop handling
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.background = '#f0f7ff';
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.background = 'none';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.background = 'none';
+            handleFile(e.dataTransfer.files[0]);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFile(e.target.files[0]);
+        });
+
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const jsonData = JSON.parse(e.target.result);
+                    processJSON(jsonData);
+                } catch (error) {
+                    alert('Invalid JSON file: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function processJSON(data) {
+            tableData = Array.isArray(data) ? data : [data];
+            columns = Object.keys(tableData[0]);
+            visibleColumns = new Set(columns);
+            
+            createControls();
+            renderTable();
+            controls.style.display = 'flex';
+            exportBtn.style.display = 'inline-block';
+        }
+
+        function createControls() {
+            controls.innerHTML = '';
+            columns.forEach(col => {
+                const label = document.createElement('label');
+                label.className = 'checkbox-label active';
+                label.innerHTML = `
+                    <input type="checkbox" value="${col}" checked style="display: none;">
+                    ${col}
+                `;
+                label.addEventListener('click', (e) => {
+                    const checkbox = label.querySelector('input');
+                    checkbox.checked = !checkbox.checked;
+                    label.classList.toggle('active');
+                    
+                    if (checkbox.checked) {
+                        visibleColumns.add(col);
+                    } else {
+                        visibleColumns.delete(col);
+                    }
+                    renderTable();
+                });
+                controls.appendChild(label);
+            });
+        }
+
+        function renderTable() {
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            const tbody = document.createElement('tbody');
+            const headerRow = document.createElement('tr');
+
+            // Create headers with filters
+            visibleColumns.forEach(col => {
+                const th = document.createElement('th');
+                th.innerHTML = `
+                    ${col}
+                    <input type="text" class="filter-input" data-column="${col}" placeholder="Filter...">
+                `;
+                headerRow.appendChild(th);
+            });
+
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // Populate table body
+            tableData.forEach(row => {
+                const tr = document.createElement('tr');
+                visibleColumns.forEach(col => {
+                    const td = document.createElement('td');
+                    td.textContent = row[col] || '';
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(tbody);
+            tableContainer.innerHTML = '';
+            tableContainer.appendChild(table);
+
+            // Add filter listeners
+            document.querySelectorAll('.filter-input').forEach(input => {
+                input.addEventListener('input', filterTable);
+            });
+        }
+
+        function filterTable() {
+            const filters = {};
+            document.querySelectorAll('.filter-input').forEach(input => {
+                const column = input.dataset.column;
+                const value = input.value.toLowerCase();
+                if (value) filters[column] = value;
+            });
+
+            tbody.innerHTML = '';
+            tableData.forEach(row => {
+                let matches = true;
+                for (let [col, value] of Object.entries(filters)) {
+                    if (!String(row[col]).toLowerCase().includes(value)) {
+                        matches = false;
+                        break;
+                    }
+                }
+                if (matches) {
+                    const tr = document.createElement('tr');
+                    visibleColumns.forEach(col => {
+                        const td = document.createElement('td');
+                        td.textContent = row[col] || '';
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                }
+            });
+        }
+
+        // Export to Excel
+        exportBtn.addEventListener('click', () => {
+            const headers = Array.from(visibleColumns);
+            const csv = [
+                headers.join(','),
+                ...tableData.map(row => 
+                    headers.map(col => `"${String(row[col] || '').replace(/"/g, '""')}"`).join(',')
+                )
+            ].join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'table_data.csv';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        });
+    </script>
+</body>
+</html>
