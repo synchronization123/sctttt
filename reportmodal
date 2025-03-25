@@ -72,11 +72,8 @@ async function generateReport() {
     `;
 
     // Section 2: Build
-    const reviewers = [...new Set(testCases.map(tc => {
-        const lead = usersList.find(user => user.id == tc.lead);
-        return lead ? `${lead.first_name} ${lead.last_name}` : 'Unassigned';
-    }))].join(', ');
-    let buildContent = `
+    // First Table: Build, Date, Total No. of Jiras
+    let buildOverviewContent = `
         <h3 style="color: var(--bs-blue); margin-top: 20px;">Build</h3>
         <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
             <thead>
@@ -84,40 +81,64 @@ async function generateReport() {
                     <th style="padding: 8px; border: 1px solid #e0e0e0;">Build</th>
                     <th style="padding: 8px; border: 1px solid #e0e0e0;">Date</th>
                     <th style="padding: 8px; border: 1px solid #e0e0e0;">Total No. of Jiras</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="background: #fafafa;">
+                    <td style="padding: 8px; border: 1px solid #e0e0e0;">${engagement.name}</td>
+                    <td style="padding: 8px; border: 1px solid #e0e0e0;">${today}</td>
+                    <td style="padding: 8px; border: 1px solid #e0e0e0;">${testCases.length}</td>
+                </tr>
+            </tbody>
+        </table>
+    `;
+
+    // Second Table: Detailed Build Information
+    let buildDetailsContent = `
+        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+            <thead>
+                <tr style="background: var(--bs-gray-200);">
                     <th style="padding: 8px; border: 1px solid #e0e0e0;">Changelog Reviewers</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Total Time Taken</th>
                     <th style="padding: 8px; border: 1px solid #e0e0e0;">Issue Key</th>
                     <th style="padding: 8px; border: 1px solid #e0e0e0;">Test Approach</th>
                     <th style="padding: 8px; border: 1px solid #e0e0e0;">Manual Secure Code Review</th>
                     <th style="padding: 8px; border: 1px solid #e0e0e0;">Manual Security Testing</th>
                     <th style="padding: 8px; border: 1px solid #e0e0e0;">Remark/Comment</th>
+                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Why Manual Testing is Not Required?</th>
                 </tr>
             </thead>
             <tbody>
     `;
     testCases.forEach(tc => {
-        const isSecurity = tc.commit_hash === "Security";
-        const secureCodeReview = tc.description && tc.description.toLowerCase().includes("secure code review: done") ? "Done" : "Not Done";
-        const manualTesting = tc.description && tc.description.toLowerCase().includes("manual testing: na") ? "NA" : "Done";
-        buildContent += `
-            <tr style="background: #fafafa;">
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${engagement.name}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${today}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${testCases.length}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${reviewers}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">N/A</td>
+        const lead = usersList.find(user => user.id == tc.lead);
+        const reviewer = lead ? `${lead.first_name} ${lead.last_name}` : 'Unassigned';
+        const testApproach = tc.issue_type && tc.issue_type.toLowerCase().includes("security") ? "Security Jira" : "Functional Jira";
+        const descriptionLower = tc.description ? tc.description.toLowerCase() : "";
+        const secureCodeReview = descriptionLower.includes("secure code review: done") ? "Done" : 
+                                 (descriptionLower.includes("na") ? "NA" : "Not Done");
+        const manualSecurityTesting = descriptionLower.includes("manual security code testing: done") ? "Done" : 
+                                      (descriptionLower.includes("na") ? "NA" : "Not Done");
+
+        buildDetailsContent += `
+            <tr style="background: #fafafa;" data-id="${tc.id}">
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">${reviewer}</td>
                 <td style="padding: 8px; border: 1px solid #e0e0e0;">${tc.id}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${isSecurity ? 'Security Jira' : 'Functional Jira'}</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">${testApproach}</td>
                 <td style="padding: 8px; border: 1px solid #e0e0e0;">${secureCodeReview}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${manualTesting}</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">${manualSecurityTesting}</td>
                 <td style="padding: 8px; border: 1px solid #e0e0e0;">${tc.description || 'N/A'}</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">
+                    <input type="text" class="form-control manual-testing-reason" data-id="${tc.id}" value="${tc.build_id || ''}" />
+                </td>
             </tr>
         `;
     });
-    buildContent += `
+    buildDetailsContent += `
             </tbody>
         </table>
     `;
+
+    const buildContent = buildOverviewContent + buildDetailsContent;
 
     // Section 3: Security Analysis (Fetched from API)
     const securityResponse = await fetch(`${BASE_URL}/tests/?engagement=${engagementId}&tags=risk_register`);
@@ -164,7 +185,7 @@ async function generateReport() {
     const reportContent = `${summaryContent}${buildContent}${securityAnalysisContent}`;
     document.getElementById("reportContent").innerHTML = reportContent;
 
-    // Add event listeners for autosaving dropdown and textbox changes
+    // Add event listeners for autosaving dropdown, comment textbox, and manual testing reason textbox
     document.querySelectorAll('.security-status-dropdown').forEach(dropdown => {
         dropdown.addEventListener('change', async () => {
             const testId = dropdown.dataset.id;
@@ -184,9 +205,18 @@ async function generateReport() {
             showAlert("Comment Saved", "success", engagement.name);
         });
     });
+
+    document.querySelectorAll('.manual-testing-reason').forEach(input => {
+        input.addEventListener('blur', async () => {
+            const testId = input.dataset.id;
+            const newReason = input.value;
+            await updateSecurityTest(testId, { build_id: newReason }, engagement.name);
+            showAlert("Manual Testing Reason Saved", "success", engagement.name);
+        });
+    });
 }
 
-// Function to update security test status or comment via API
+// Function to update security test status, comment, or manual testing reason via API
 async function updateSecurityTest(testId, payload, engagementName) {
     try {
         const response = await fetch(`${BASE_URL}/tests/${testId}/`, {
@@ -205,7 +235,7 @@ async function updateSecurityTest(testId, payload, engagementName) {
             showAlert(`Failed to update test ${testId}!`, "danger");
         }
     } catch (error) {
-        showAlert("Error updating security test!", "danger");
+        showAlert("Error updating test!", "danger");
         console.error("Error:", error);
     }
 }
