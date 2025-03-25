@@ -1,3 +1,31 @@
+// Global variable to cache CSRF token
+let cachedCsrfToken = null;
+
+// Function to fetch CSRF token from demo.defectdojo.org/api/key-v2
+async function fetchCsrfToken() {
+    if (cachedCsrfToken) return cachedCsrfToken;
+
+    try {
+        const response = await fetch('https://demo.defectdojo.org/api/key-v2', {
+            method: "GET",
+            credentials: "include" // Include cookies if needed for authentication
+        });
+        if (!response.ok) throw new Error("Failed to fetch CSRF token page");
+
+        const htmlText = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlText, 'text/html');
+        const csrfInput = doc.querySelector('input[name="csrfmiddlewaretoken"]');
+        if (!csrfInput) throw new Error("CSRF token not found in HTML");
+
+        cachedCsrfToken = csrfInput.value;
+        return cachedCsrfToken;
+    } catch (error) {
+        console.error("Error fetching CSRF token:", error);
+        throw error;
+    }
+}
+
 async function generateReport() {
     const engagementId = document.getElementById("reportEngagementSelect").value;
     if (!engagementId) {
@@ -5,9 +33,19 @@ async function generateReport() {
         return;
     }
 
-    const engagement = openEngagements.find(eng => eng.id == engagementId);
-    if (!engagement) {
-        document.getElementById("reportContent").innerHTML = '<p style="color: #721c24;">Engagement not found!</p>';
+    // Fetch latest engagement data with GET
+    let engagement;
+    try {
+        const response = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include"
+        });
+        if (!response.ok) throw new Error("Failed to fetch engagement data");
+        engagement = await response.json();
+    } catch (error) {
+        console.error("Error fetching engagement:", error);
+        document.getElementById("reportContent").innerHTML = '<p style="color: #721c24;">Error fetching engagement data!</p>';
         return;
     }
 
@@ -28,7 +66,7 @@ async function generateReport() {
         <h3 style="color: var(--bs-blue); margin-top: 20px;">Summary</h3>
         
         <!-- Table 1: Build, Date, Total Changelog, Contrast Verification -->
-        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 2px solid #007bff;">
             <thead>
                 <tr style="background: var(--bs-gray-200);">
                     <th style="padding: 8px; border: 1px solid #e0e0e0;">Build</th>
@@ -61,7 +99,7 @@ async function generateReport() {
         </table>
 
         <!-- Table 2: Engagement Description -->
-        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <table style="width: 100%; border-collapse: collapse; margin-top: 20px; border: 2px solid #007bff;">
             <thead>
                 <tr style="background: var(--bs-gray-200);">
                     <th style="padding: 8px; border: 1px solid #e0e0e0;">Description</th>
@@ -79,10 +117,9 @@ async function generateReport() {
     `;
 
     // Section 2: Build
-    // First Table: Build, Date, Total No. of Jiras
     let buildOverviewContent = `
         <h3 style="color: var(--bs-blue); margin-top: 20px;">Build</h3>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 2px solid #007bff;">
             <thead>
                 <tr style="background: var(--bs-gray-200);">
                     <th style="padding: 8px; border: 1px solid #e0e0e0;">Build</th>
@@ -100,9 +137,8 @@ async function generateReport() {
         </table>
     `;
 
-    // Second Table: Detailed Build Information
     let buildDetailsContent = `
-        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <table style="width: 100%; border-collapse: collapse; margin-top: 20px; border: 2px solid #007bff;">
             <thead>
                 <tr style="background: var(--bs-gray-200);">
                     <th style="padding: 8px; border: 1px solid #e0e0e0;">Changelog Reviewers</th>
@@ -153,7 +189,7 @@ async function generateReport() {
 
     let securityAnalysisContent = `
         <h3 style="color: var(--bs-blue); margin-top: 20px;">Security Analysis</h3>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 2px solid #007bff;">
             <thead>
                 <tr style="background: var(--bs-gray-200);">
                     <th style="padding: 8px; border: 1px solid #e0e0e0;">Sr. No.</th>
@@ -187,8 +223,33 @@ async function generateReport() {
         </table>
     `;
 
-    // Combine all sections
-    const reportContent = `${summaryContent}${buildContent}${securityAnalysisContent}`;
+    // Combine all sections with Print button
+    const reportContent = `
+        <div class="report-container" style="padding: 20px; background: #fff; border: 3px solid #007bff; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            ${summaryContent}${buildContent}${securityAnalysisContent}
+            <button class="btn btn-success mt-3 print-report-btn" onclick="printReport()">Print Report</button>
+        </div>
+        <style>
+            @media print {
+                .report-container {
+                    width: 100%;
+                    margin: 0;
+                    padding: 10mm;
+                    border: 2px solid #007bff;
+                    box-shadow: none;
+                }
+                table {
+                    page-break-inside: auto;
+                    width: 100%;
+                }
+                tr { page-break-inside: avoid; page-break-after: auto; }
+                th, td { font-size: 12pt; }
+                .btn, .form-select, .form-control { display: none; }
+                h3 { color: #007bff; font-size: 16pt; }
+                @page { margin: 10mm; }
+            }
+        </style>
+    `;
     document.getElementById("reportContent").innerHTML = reportContent;
 
     // Event listeners for Section 1
@@ -197,7 +258,7 @@ async function generateReport() {
         contrastDropdown.addEventListener('change', async () => {
             const engagementId = contrastDropdown.dataset.id;
             const newValue = contrastDropdown.value;
-            await updateEngagement(engagementId, { reason: newValue }, engagement.name);
+            await updateEngagement(engagementId, { reason: newValue }, engagement);
             showAlert("Contrast Verification Saved", "success", engagement.name);
         });
     }
@@ -208,7 +269,7 @@ async function generateReport() {
         saveButton.addEventListener('click', async () => {
             const engagementId = saveButton.dataset.id;
             const newDescription = textarea.value;
-            await updateEngagement(engagementId, { description: newDescription }, engagement.name);
+            await updateEngagement(engagementId, { description: newDescription }, engagement);
             showAlert("Description Saved", "success", engagement.name);
         });
     }
@@ -243,12 +304,24 @@ async function generateReport() {
     });
 }
 
-// Function to update engagement via API
-async function updateEngagement(engagementId, payload, engagementName) {
+// Function to update engagement via PUT with mandatory params and CSRF from DefectDojo
+async function updateEngagement(engagementId, updates, engagementData) {
     try {
-        const csrfToken = window.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+        const csrfToken = await fetchCsrfToken();
+        if (!csrfToken) throw new Error("CSRF token not retrieved");
+
+        const payload = {
+            id: engagementData.id,
+            name: engagementData.name,
+            target_start: engagementData.target_start,
+            target_end: engagementData.target_end,
+            lead: engagementData.lead,
+            product: engagementData.product,
+            ...updates // Merge updates (reason or description)
+        };
+
         const response = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
-            method: "PATCH",
+            method: "PUT",
             headers: { 
                 "Content-Type": "application/json",
                 "X-CSRFToken": csrfToken
@@ -260,7 +333,7 @@ async function updateEngagement(engagementId, payload, engagementName) {
         if (response.ok) {
             console.log(`Updated engagement ${engagementId} with ${JSON.stringify(payload)}`);
             const engagement = openEngagements.find(eng => eng.id == engagementId);
-            Object.assign(engagement, payload);
+            Object.assign(engagement, updates);
         } else {
             const errorText = await response.text();
             console.error(`Failed to update engagement ${engagementId}: ${errorText}`);
@@ -272,10 +345,12 @@ async function updateEngagement(engagementId, payload, engagementName) {
     }
 }
 
-// Function to update security test via API
+// Function to update security test via PATCH
 async function updateSecurityTest(testId, payload, engagementName) {
     try {
-        const csrfToken = window.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+        const csrfToken = await fetchCsrfToken();
+        if (!csrfToken) throw new Error("CSRF token not retrieved");
+
         const response = await fetch(`${BASE_URL}/tests/${testId}/`, {
             method: "PATCH",
             headers: { 
@@ -297,4 +372,9 @@ async function updateSecurityTest(testId, payload, engagementName) {
         console.error("Error updating test:", error);
         showAlert("Error updating test: " + error.message, "danger");
     }
+}
+
+// Function to print the report
+function printReport() {
+    window.print();
 }
