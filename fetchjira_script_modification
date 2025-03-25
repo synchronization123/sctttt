@@ -1,11 +1,11 @@
-Here's the modified fetch_jira_issues function that implements the JQL format you requested:def fetch_jira_issues(version):
-    """Fetch JIRA issues where 'Build(s)' matches either 'VX.Y.Z' or 'RX.Y.Z' (case-insensitive)."""
+def fetch_jira_issues(version):
+    """Fetch all JIRA issues where 'Build(s)' matches either 'VX.Y.Z' or 'RX.Y.Z' (case-insensitive)."""
     normalized_version = normalize_version(version)  # Starts with 'v'
     alt_version = re.sub(r"^v", "r", normalized_version, flags=re.IGNORECASE)  # Replace 'v' with 'r'
 
     jql_query = f'"Build(s)"="{normalized_version}" OR "Build(s)"="{alt_version}"'
     start_at = 0
-    max_results = 50
+    max_results = 50  # Set to 50 per page as requested
     all_issues = []
 
     while True:
@@ -23,13 +23,18 @@ Here's the modified fetch_jira_issues function that implements the JQL format yo
             issues = data.get("issues", [])
             all_issues.extend(issues)
             
-            if len(issues) < max_results:
+            total = data.get("total", 0)  # Total number of issues matching the query
+            print(f"Fetched {len(all_issues)} of {total} issues so far...")
+
+            # Break only if we've fetched all issues or no more issues are returned
+            if len(issues) == 0 or len(all_issues) >= total:
                 break
             
             start_at += max_results
 
         except requests.RequestException as e:
-            print(f"Error fetching JIRA issues: {e}")
+            print(f"Error fetching JIRA issues at startAt={start_at}: {e}")
             break
 
-    return all_issuesYou can replace the original fetch_jira_issues function in your code with this version. It now uses the format "Build(s)"={engagement name} for the normalized version (starting with 'V') and replaces 'V' with 'R' for the second part, maintaining case insensitivity with normalize_version. For example, if the engagement name is "V1_develop_4", the JQL will be:"Build(s)"="v1_develop_4" OR "Build(s)"="r1_develop_4"
+    print(f"Total JIRA issues fetched: {len(all_issues)}")
+    return all_issues
