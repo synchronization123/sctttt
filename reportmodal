@@ -1,225 +1,82 @@
-function showReportModal() {
-    const modal = document.getElementById("reportModal");
-    const overlay = document.getElementById("modalOverlay");
-    const select = document.getElementById("reportEngagementSelect");
-
-    // Populate dropdown with Open SCT engagements
-    select.innerHTML = '<option value="">Select an Engagement</option>' + 
-        openEngagements.map(eng => `<option value="${eng.id}">${eng.name}</option>`).join('');
-
-    // Clear previous report content
-    document.getElementById("reportContent").innerHTML = '';
-
-    modal.style.display = "block";
-    overlay.style.display = "block";
-}
-
-function closeReportModal() {
-    const modal = document.getElementById("reportModal");
-    const overlay = document.getElementById("modalOverlay");
-    modal.style.display = "none";
-    overlay.style.display = "none";
-}
-
-async function generateReport() {
-    const engagementId = document.getElementById("reportEngagementSelect").value;
-    if (!engagementId) {
-        document.getElementById("reportContent").innerHTML = '<p style="color: #721c24;">Please select an engagement to generate the report.</p>';
-        return;
-    }
-
-    const engagement = openEngagements.find(eng => eng.id == engagementId);
-    if (!engagement) {
-        document.getElementById("reportContent").innerHTML = '<p style="color: #721c24;">Engagement not found!</p>';
-        return;
-    }
-
-    // Ensure test cases are fetched for Summary and Build sections
-    if (!engagement.testCases || engagement.testCases.length === 0) {
-        const response = await fetch(`${BASE_URL}/tests/?engagement=${engagement.id}`);
-        const data = await response.json();
-        engagement.testCases = data.results || [];
-    }
-
-    const testCases = engagement.testCases;
-    const today = new Date().toISOString().split('T')[0];
-    const functionalJiras = testCases.filter(tc => tc.commit_hash !== "Security").length;
-    const securityJiras = testCases.filter(tc => tc.commit_hash === "Security").length;
-
-    // Section 1: Summary
-    let summaryContent = `
-        <h3 style="color: var(--bs-blue); margin-top: 20px;">Summary</h3>
-        <p><strong>Name:</strong> ${engagement.name}</p>
-        <p><strong>Category:</strong> Activity</p>
-        <p><strong>Total Changelogs:</strong></p>
-        <ul>
-            <li>Number of Functional Jira: ${functionalJiras}</li>
-            <li>Number of Security Jira: ${securityJiras}</li>
-        </ul>
-        <p><strong>Contrast Verification:</strong> ${engagement.contrast_deployed ? 'Yes' : 'No'}</p>
-        <p><strong>Conclusion:</strong></p>
-        <ul>
-            <li>Security Jira found: ${securityJiras}</li>
-            <li>Manual Code Review: Done</li>
-            <li>Logical Testing: Done</li>
-            <li>Did we close/Change status to Done for all Security Jiras? No</li>
-            <li>Functional Jira Count: ${functionalJiras}</li>
-            <li>Did we download the patch and reviewed all files? No</li>
-            <li>What are the files/folders we haven't covered or reviewed and why? <em>Not specified</em></li>
-            <li>Did we find any vulnerability while review? No</li>
-            <li>Following is the Security Analysis: <em>See Security Analysis section below</em></li>
-        </ul>
-    `;
-
-    // Section 2: Build
-    // First Table: Build, Date, Total No. of Jiras
-    let buildOverviewContent = `
-        <h3 style="color: var(--bs-blue); margin-top: 20px;">Build</h3>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-            <thead>
-                <tr style="background: var(--bs-gray-200);">
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Build</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Date</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Total No. of Jiras</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr style="background: #fafafa;">
-                    <td style="padding: 8px; border: 1px solid #e0e0e0;">${engagement.name}</td>
-                    <td style="padding: 8px; border: 1px solid #e0e0e0;">${today}</td>
-                    <td style="padding: 8px; border: 1px solid #e0e0e0;">${testCases.length}</td>
-                </tr>
-            </tbody>
-        </table>
-    `;
-
-    // Second Table: Detailed Build Information
-    let buildDetailsContent = `
-        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-            <thead>
-                <tr style="background: var(--bs-gray-200);">
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Changelog Reviewers</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Issue Key</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Test Approach</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Manual Secure Code Review</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Manual Security Testing</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Remark/Comment</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Why Manual Testing is Not Required?</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-    testCases.forEach(tc => {
-        const lead = usersList.find(user => user.id == tc.lead);
-        const reviewer = lead ? `${lead.first_name} ${lead.last_name}` : 'Unassigned';
-        const testApproach = tc.issue_type && tc.issue_type.toLowerCase().includes("security") ? "Security Jira" : "Functional Jira";
-        const descriptionLower = tc.description ? tc.description.toLowerCase() : "";
-        const secureCodeReview = descriptionLower.includes("secure code review: done") ? "Done" : 
-                                 (descriptionLower.includes("secure code review: na") ? "NA" : "Not Done");
-        const manualSecurityTesting = descriptionLower.includes("manual security code testing: done") ? "Done" : 
-                                      (descriptionLower.includes("manual security code testing: na") ? "NA" : "Not Done");
-
-        buildDetailsContent += `
-            <tr style="background: #fafafa;" data-id="${tc.id}">
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${reviewer}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${tc.id}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${testApproach}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${secureCodeReview}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${manualSecurityTesting}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0; max-width: 5cm; word-wrap: break-word; overflow-wrap: break-word;">${tc.description || 'N/A'}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">
-                    <input type="text" class="form-control manual-testing-reason" data-id="${tc.id}" value="${tc.build_id || ''}" />
-                </td>
+// Section 1: Summary
+let summaryContent = `
+    <h3 style="color: var(--bs-blue); margin-top: 20px;">Summary</h3>
+    
+    <!-- Table 1: Build, Date, Total Changelog, Contrast Verification -->
+    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+        <thead>
+            <tr style="background: var(--bs-gray-200);">
+                <th style="padding: 8px; border: 1px solid #e0e0e0;">Build</th>
+                <th style="padding: 8px; border: 1px solid #e0e0e0;">Date</th>
+                <th style="padding: 8px; border: 1px solid #e0e0e0;" colspan="2">Total Changelog</th>
+                <th style="padding: 8px; border: 1px solid #e0e0e0;">Contrast Verification</th>
             </tr>
-        `;
-    });
-    buildDetailsContent += `
-            </tbody>
-        </table>
-    `;
-
-    const buildContent = buildOverviewContent + buildDetailsContent;
-
-    // Section 3: Security Analysis (Fetched from API)
-    const securityResponse = await fetch(`${BASE_URL}/tests/?engagement=${engagementId}&tags=risk_register`);
-    const securityData = await securityResponse.json();
-    const securityTests = securityData.results || [];
-
-    let securityAnalysisContent = `
-        <h3 style="color: var(--bs-blue); margin-top: 20px;">Security Analysis</h3>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-            <thead>
-                <tr style="background: var(--bs-gray-200);">
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Sr. No.</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Category</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Status</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Comment</th>
-                </tr>
-            </thead>
-            <tbody id="securityAnalysisTableBody">
-    `;
-    securityTests.forEach((test, index) => {
-        const statusOptions = ["NA", "Found by code review", "Found by Manual Testing", "Not found"];
-        const selectedStatus = test.commit_hash || "NA";
-        securityAnalysisContent += `
-            <tr style="background: #fafafa;" data-id="${test.id}">
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${index + 1}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${test.title || 'N/A'}</td>
+            <tr style="background: var(--bs-gray-200);">
+                <th style="padding: 8px; border: 1px solid #e0e0e0;"></th>
+                <th style="padding: 8px; border: 1px solid #e0e0e0;"></th>
+                <th style="padding: 8px; border: 1px solid #e0e0e0;">Functional Jira</th>
+                <th style="padding: 8px; border: 1px solid #e0e0e0;">Security Jira</th>
+                <th style="padding: 8px; border: 1px solid #e0e0e0;"></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr style="background: #fafafa;">
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">${engagement.name}</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">${today}</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">${functionalJiras}</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">${securityJiras}</td>
                 <td style="padding: 8px; border: 1px solid #e0e0e0;">
-                    <select class="form-select security-status-dropdown" data-id="${test.id}">
-                        ${statusOptions.map(option => `<option value="${option}" ${option === selectedStatus ? 'selected' : ''}>${option}</option>`).join('')}
+                    <select class="form-select contrast-verification-dropdown" data-id="${engagement.id}">
+                        <option value="No" ${!engagement.reason || engagement.reason === "No" ? 'selected' : ''}>No</option>
+                        <option value="Yes" ${engagement.reason === "Yes" ? 'selected' : ''}>Yes</option>
                     </select>
                 </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Table 2: Engagement Description -->
+    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <thead>
+            <tr style="background: var(--bs-gray-200);">
+                <th style="padding: 8px; border: 1px solid #e0e0e0;">Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr style="background: #fafafa;">
                 <td style="padding: 8px; border: 1px solid #e0e0e0;">
-                    <input type="text" class="form-control security-comment-input" data-id="${test.id}" value="${test.branch_tag || ''}" />
+                    <textarea class="form-control engagement-description-textarea" data-id="${engagement.id}" style="width: 100%; height: 200px; max-width: 10cm; text-align: justify; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;">${engagement.description || ''}</textarea>
+                    <button class="btn btn-primary mt-2 save-description-btn" data-id="${engagement.id}">Save</button>
                 </td>
             </tr>
-        `;
+        </tbody>
+    </table>
+`;
+
+// Add event listeners for Contrast Verification dropdown and Description save button
+document.querySelectorAll('.contrast-verification-dropdown').forEach(dropdown => {
+    dropdown.addEventListener('change', async () => {
+        const engagementId = dropdown.dataset.id;
+        const newValue = dropdown.value;
+        await updateEngagement(engagementId, { reason: newValue }, engagement.name);
+        showAlert("Contrast Verification Saved", "success", engagement.name);
     });
-    securityAnalysisContent += `
-            </tbody>
-        </table>
-    `;
+});
 
-    // Combine all sections
-    const reportContent = `${summaryContent}${buildContent}${securityAnalysisContent}`;
-    document.getElementById("reportContent").innerHTML = reportContent;
-
-    // Add event listeners for autosaving dropdown, comment textbox, and manual testing reason textbox
-    document.querySelectorAll('.security-status-dropdown').forEach(dropdown => {
-        dropdown.addEventListener('change', async () => {
-            const testId = dropdown.dataset.id;
-            const newStatus = dropdown.value;
-            await updateSecurityTest(testId, { commit_hash: newStatus }, engagement.name);
-        });
-        dropdown.addEventListener('blur', () => {
-            showAlert("Status Saved", "success", engagement.name);
-        });
+document.querySelectorAll('.save-description-btn').forEach(button => {
+    button.addEventListener('click', async () => {
+        const engagementId = button.dataset.id;
+        const textarea = document.querySelector(`.engagement-description-textarea[data-id="${engagementId}"]`);
+        const newDescription = textarea.value;
+        await updateEngagement(engagementId, { description: newDescription }, engagement.name);
+        showAlert("Description Saved", "success", engagement.name);
     });
+});
 
-    document.querySelectorAll('.security-comment-input').forEach(input => {
-        input.addEventListener('blur', async () => {
-            const testId = input.dataset.id;
-            const newComment = input.value;
-            await updateSecurityTest(testId, { branch_tag: newComment }, engagement.name);
-            showAlert("Comment Saved", "success", engagement.name);
-        });
-    });
-
-    document.querySelectorAll('.manual-testing-reason').forEach(input => {
-        input.addEventListener('blur', async () => {
-            const testId = input.dataset.id;
-            const newReason = input.value;
-            await updateSecurityTest(testId, { build_id: newReason }, engagement.name);
-            showAlert("Manual Testing Reason Saved", "success", engagement.name);
-        });
-    });
-}
-
-// Function to update security test status, comment, or manual testing reason via API
-async function updateSecurityTest(testId, payload, engagementName) {
+// Function to update engagement via API
+async function updateEngagement(engagementId, payload, engagementName) {
     try {
-        const response = await fetch(`${BASE_URL}/tests/${testId}/`, {
+        const response = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
             method: "PATCH",
             headers: { 
                 "Content-Type": "application/json", 
@@ -230,12 +87,15 @@ async function updateSecurityTest(testId, payload, engagementName) {
         });
 
         if (response.ok) {
-            console.log(`Updated test ${testId} with ${JSON.stringify(payload)}`);
+            console.log(`Updated engagement ${engagementId} with ${JSON.stringify(payload)}`);
+            // Update local engagement object to reflect changes
+            const engagement = openEngagements.find(eng => eng.id == engagementId);
+            Object.assign(engagement, payload);
         } else {
-            showAlert(`Failed to update test ${testId}!`, "danger");
+            showAlert(`Failed to update engagement ${engagementId}!`, "danger");
         }
     } catch (error) {
-        showAlert("Error updating test!", "danger");
+        showAlert("Error updating engagement!", "danger");
         console.error("Error:", error);
     }
 }
