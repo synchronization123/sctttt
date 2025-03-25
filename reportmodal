@@ -149,7 +149,9 @@ async function generateReport() {
                         ${statusOptions.map(option => `<option value="${option}" ${option === selectedStatus ? 'selected' : ''}>${option}</option>`).join('')}
                     </select>
                 </td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${test.branch_tag || 'N/A'}</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;">
+                    <input type="text" class="form-control security-comment-input" data-id="${test.id}" value="${test.branch_tag || ''}" />
+                </td>
             </tr>
         `;
     });
@@ -162,25 +164,31 @@ async function generateReport() {
     const reportContent = `${summaryContent}${buildContent}${securityAnalysisContent}`;
     document.getElementById("reportContent").innerHTML = reportContent;
 
-    // Add event listeners for autosaving dropdown changes
+    // Add event listeners for autosaving dropdown and textbox changes
     document.querySelectorAll('.security-status-dropdown').forEach(dropdown => {
         dropdown.addEventListener('change', async () => {
             const testId = dropdown.dataset.id;
             const newStatus = dropdown.value;
-            await updateSecurityTest(testId, newStatus, engagement.name);
+            await updateSecurityTest(testId, { commit_hash: newStatus }, engagement.name);
         });
         dropdown.addEventListener('blur', () => {
-            showAlert("Saved", "success", engagement.name);
+            showAlert("Status Saved", "success", engagement.name);
+        });
+    });
+
+    document.querySelectorAll('.security-comment-input').forEach(input => {
+        input.addEventListener('blur', async () => {
+            const testId = input.dataset.id;
+            const newComment = input.value;
+            await updateSecurityTest(testId, { branch_tag: newComment }, engagement.name);
+            showAlert("Comment Saved", "success", engagement.name);
         });
     });
 }
 
-// Function to update security test status via API
-async function updateSecurityTest(testId, newStatus, engagementName) {
+// Function to update security test status or comment via API
+async function updateSecurityTest(testId, payload, engagementName) {
     try {
-        const payload = {
-            commit_hash: newStatus
-        };
         const response = await fetch(`${BASE_URL}/tests/${testId}/`, {
             method: "PATCH",
             headers: { 
@@ -192,12 +200,12 @@ async function updateSecurityTest(testId, newStatus, engagementName) {
         });
 
         if (response.ok) {
-            console.log(`Updated test ${testId} status to ${newStatus}`);
+            console.log(`Updated test ${testId} with ${JSON.stringify(payload)}`);
         } else {
-            showAlert(`Failed to update status for test ${testId}!`, "danger");
+            showAlert(`Failed to update test ${testId}!`, "danger");
         }
     } catch (error) {
-        showAlert("Error updating security test status!", "danger");
+        showAlert("Error updating security test!", "danger");
         console.error("Error:", error);
     }
 }
