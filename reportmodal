@@ -115,9 +115,9 @@ async function generateReport() {
         const testApproach = tc.issue_type && tc.issue_type.toLowerCase().includes("security") ? "Security Jira" : "Functional Jira";
         const descriptionLower = tc.description ? tc.description.toLowerCase() : "";
         const secureCodeReview = descriptionLower.includes("secure code review: done") ? "Done" : 
-                                 (descriptionLower.includes("na") ? "NA" : "Not Done");
+                                 (descriptionLower.includes("secure code review: na") ? "NA" : "Not Done");
         const manualSecurityTesting = descriptionLower.includes("manual security code testing: done") ? "Done" : 
-                                      (descriptionLower.includes("na") ? "NA" : "Not Done");
+                                      (descriptionLower.includes("manual security code testing: na") ? "NA" : "Not Done");
 
         buildDetailsContent += `
             <tr style="background: #fafafa;" data-id="${tc.id}">
@@ -126,7 +126,7 @@ async function generateReport() {
                 <td style="padding: 8px; border: 1px solid #e0e0e0;">${testApproach}</td>
                 <td style="padding: 8px; border: 1px solid #e0e0e0;">${secureCodeReview}</td>
                 <td style="padding: 8px; border: 1px solid #e0e0e0;">${manualSecurityTesting}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${tc.description || 'N/A'}</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0; max-width: 5cm; word-wrap: break-word; overflow-wrap: break-word;">${tc.description || 'N/A'}</td>
                 <td style="padding: 8px; border: 1px solid #e0e0e0;">
                     <input type="text" class="form-control manual-testing-reason" data-id="${tc.id}" value="${tc.build_id || ''}" />
                 </td>
