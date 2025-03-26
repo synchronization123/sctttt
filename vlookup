@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SuperGrok VLOOKUP Utility</title>
+</head>
+<body>
+    <div class="container">
+        <h1>VLOOKUP Utility</h1>
+        <p class="warning">Note: Please upload files as CSV (convert .xlsx to .csv first), as this tool uses pure JavaScript.</p>
+        
+        <!-- Step 1: Upload First File -->
+        <div class="step">
+            <h2>Step 1: Upload First File</h2>
+            <input type="file" id="file1" accept=".xlsx,.csv">
+            <select id="columnSelect"></select>
+        </div>
+
+        <!-- Step 2: Upload Second File -->
+        <div class="step" id="step2" style="display: none;">
+            <h2>Step 2: Upload Second File</h2>
+            <input type="file" id="file2" accept=".xlsx,.csv">
+            <div id="columnMatchInfo"></div>
+        </div>
+
+        <!-- Step 3: Select Columns and Process -->
+        <div class="step" id="step3" style="display: none;">
+            <h2>Step 3: Select Columns to VLOOKUP</h2>
+            <div id="columnCheckboxes"></div>
+            <button id="vlookupBtn">Perform VLOOKUP</button>
+        </div>
+    </div>
+
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        h2 {
+            color: #34495e;
+        }
+        .warning {
+            color: #e74c3c;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        select, input[type="file"], button {
+            margin: 10px 0;
+            padding: 8px;
+            width: 200px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            width: auto;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #columnCheckboxes {
+            margin: 10px 0;
+        }
+    </style>
+
+    <script>
+        let data1, data2;
+        let headers1, headers2;
+        let selectedColumn;
+
+        // Parse CSV string to array of objects
+        function parseCSV(csv) {
+            const lines = csv.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            const result = [];
+            
+            for(let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => v.trim());
+                const obj = {};
+                headers.forEach((header, index) => {
+                    obj[header] = values[index];
+                });
+                result.push(obj);
+            }
+            return { headers, data: result };
+        }
+
+        // Handle file upload (assuming CSV)
+        function handleFileUpload(inputId, callback) {
+            document.getElementById(inputId).addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if(!file.name.endsWith('.csv')) {
+                    alert('Please upload a CSV file (convert .xlsx to .csv first).');
+                    return;
+                }
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const text = e.target.result;
+                    const parsed = parseCSV(text);
+                    callback(parsed);
+                };
+                
+                reader.readAsText(file);
+            });
+        }
+
+        // Step 1: First file
+        handleFileUpload('file1', function(parsed) {
+            data1 = parsed.data;
+            headers1 = parsed.headers;
+            populateColumnDropdown();
+        });
+
+        // Populate dropdown with columns
+        function populateColumnDropdown() {
+            const select = document.getElementById('columnSelect');
+            select.innerHTML = '<option value="">Select VLOOKUP Column</option>';
+            
+            headers1.forEach((header, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = header;
+                select.appendChild(option);
+            });
+
+            select.onchange = function() {
+                selectedColumn = this.value;
+                document.getElementById('step2').style.display = 'block';
+            };
+        }
+
+        // Step 2: Second file
+        handleFileUpload('file2', function(parsed) {
+            data2 = parsed.data;
+            headers2 = parsed.headers;
+            checkColumnMatch();
+        });
+
+        // Check if selected column exists in second file
+        function checkColumnMatch() {
+            const columnMatchInfo = document.getElementById('columnMatchInfo');
+            const selectedColumnName = headers1[selectedColumn];
+            
+            if(headers2.includes(selectedColumnName)) {
+                columnMatchInfo.innerHTML = `✓ Column "${selectedColumnName}" found in second file`;
+                populateColumnCheckboxes();
+                document.getElementById('step3').style.display = 'block';
+            } else {
+                columnMatchInfo.innerHTML = `⚠ Column "${selectedColumnName}" not found in second file`;
+            }
+        }
+
+        // Populate checkboxes for columns to VLOOKUP
+        function populateColumnCheckboxes() {
+            const container = document.getElementById('columnCheckboxes');
+            container.innerHTML = '';
+            
+            headers2.forEach((header, index) => {
+                const div = document.createElement('div');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `col_${index}`;
+                checkbox.value = index;
+                const label = document.createElement('label');
+                label.htmlFor = `col_${index}`;
+                label.textContent = header;
+                div.appendChild(checkbox);
+                div.appendChild(label);
+                container.appendChild(div);
+            });
+        }
+
+        // Perform VLOOKUP and download as CSV
+        document.getElementById('vlookupBtn').addEventListener('click', function() {
+            const selectedColumns = Array.from(document.querySelectorAll('#columnCheckboxes input:checked'))
+                .map(input => parseInt(input.value));
+            const selectedColumnName = headers1[selectedColumn];
+
+            const result = data1.map(row => {
+                const lookupValue = row[selectedColumnName];
+                const matchedRow = data2.find(r => r[selectedColumnName] === lookupValue);
+                
+                if(matchedRow) {
+                    selectedColumns.forEach(colIdx => {
+                        const colName = headers2[colIdx];
+                        row[`VLOOKUP_${colName}`] = matchedRow[colName];
+                    });
+                }
+                return row;
+            });
+
+            // Convert to CSV
+            const allHeaders = [...headers1, ...selectedColumns.map(i => `VLOOKUP_${headers2[i]}`)];
+            let csvContent = allHeaders.join(',') + '\n';
+            
+            result.forEach(row => {
+                const rowValues = allHeaders.map(header => row[header] || '');
+                csvContent += rowValues.join(',') + '\n';
+            });
+
+            // Download as CSV
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'vlookup_result.csv'; // Still CSV, not XLSX
+            link.click();
+        });
+    </script>
+</body>
+</html>
