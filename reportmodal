@@ -147,13 +147,27 @@ function printReport() {
     printContainer.innerHTML = printHtml;
     document.body.appendChild(printContainer);
 
+    // Function to clean up after printing
+    const cleanup = () => {
+        if (document.body.contains(printContainer)) {
+            document.body.removeChild(printContainer);
+        }
+        window.removeEventListener('afterprint', cleanup); // Remove listener to avoid memory leaks
+    };
+
+    // Use onafterprint to detect when printing is done
+    window.addEventListener('afterprint', cleanup);
+
     // Ensure DOM is updated, then print
     setTimeout(() => {
         window.print();
-        
-        // Clean up: Remove temporary container after printing
+
+        // Fallback: If onafterprint doesn’t fire (e.g., user cancels), clean up after a longer delay
         setTimeout(() => {
-            document.body.removeChild(printContainer);
-        }, 100); // Delay to allow print dialog to process
+            if (document.body.contains(printContainer)) {
+                console.warn("[SuperGrok] Fallback cleanup triggered: onafterprint not detected");
+                cleanup();
+            }
+        }, 2000); // 2-second fallback
     }, 50); // Brief delay to ensure rendering
 }
