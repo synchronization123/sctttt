@@ -1,14 +1,12 @@
 function printReport() {
-    // Store original content to restore later
+    // Get the report container
     const reportContent = document.getElementById("reportContent");
     if (!reportContent) {
         console.error("[SuperGrok] Error: reportContent element not found");
         alert("Unable to print report: Content container missing.");
         return;
     }
-    const originalContent = reportContent.innerHTML;
 
-    // Get the report container
     const reportContainer = reportContent.querySelector('.report-container');
     if (!reportContainer) {
         console.error("[SuperGrok] Error: .report-container not found in reportContent");
@@ -52,97 +50,110 @@ function printReport() {
 
     // Create print-specific HTML with page breaks and styling
     const printHtml = `
-        <div class="print-report-container">
-            <!-- Page 1: Summary -->
-            <div class="print-page summary-page" style="page-break-after: always;">
-                <h1 style="text-align: center; color: #007bff; font-size: 24pt; margin-bottom: 20px;">Engagement Summary Report</h1>
-                ${summarySection}
-            </div>
+        <div id="print-report-full" style="position: absolute; left: -9999px; top: 0; width: 100%;">
+            <div class="print-report-container">
+                <!-- Page 1: Summary -->
+                <div class="print-page summary-page" style="page-break-after: always;">
+                    <h1 style="text-align: center; color: #007bff; font-size: 24pt; margin-bottom: 20px;">Engagement Summary Report</h1>
+                    ${summarySection}
+                </div>
 
-            <!-- Page 2: Security Analysis -->
-            <div class="print-page security-page" style="page-break-before: always; page-break-after: always;">
-                ${securitySection}
-            </div>
+                <!-- Page 2: Security Analysis -->
+                <div class="print-page security-page" style="page-break-before: always; page-break-after: always;">
+                    ${securitySection}
+                </div>
 
-            <!-- Page 3+: Build -->
-            <div class="print-page build-page" style="page-break-before: always;">
-                ${buildSection}
-            </div>
+                <!-- Page 3+: Build -->
+                <div class="print-page build-page" style="page-break-before: always;">
+                    ${buildSection}
+                </div>
 
-            <style>
-                @media print {
-                    .print-report-container {
-                        width: 100%;
-                        margin: 0;
-                        padding: 0;
+                <style>
+                    @media print {
+                        .print-report-container {
+                            width: 100%;
+                            margin: 0;
+                            padding: 0;
+                        }
+                        .print-page {
+                            width: 100%;
+                            padding: 10mm;
+                            box-sizing: border-box;
+                        }
+                        .summary-page table {
+                            width: 100%;
+                            border: 2px solid #007bff;
+                            border-collapse: collapse;
+                            margin-top: 10px;
+                            background: #fafafa;
+                            font-size: 12pt;
+                        }
+                        .summary-page th, .summary-page td {
+                            padding: 8px;
+                            border: 1px solid #e0e0e0;
+                            text-align: left;
+                        }
+                        .summary-page h3 {
+                            color: #007bff;
+                            font-size: 16pt;
+                            margin-top: 0;
+                        }
+                        .security-page table, .build-page table {
+                            width: 100%;
+                            border: 2px solid #007bff;
+                            border-collapse: collapse;
+                            margin-top: 10px;
+                            background: #fafafa;
+                            font-size: 12pt;
+                            page-break-inside: auto;
+                        }
+                        .security-page th, .security-page td, .build-page th, .build-page td {
+                            padding: 8px;
+                            border: 1px solid #e0e0e0;
+                            text-align: left;
+                            page-break-inside: avoid;
+                        }
+                        .security-page tr, .build-page tr {
+                            page-break-inside: avoid;
+                            page-break-after: auto;
+                        }
+                        .security-page h3, .build-page h3 {
+                            color: #007bff;
+                            font-size: 16pt;
+                            margin-top: 0;
+                            page-break-before: avoid;
+                        }
+                        .btn, .form-select, .form-control {
+                            display: none; /* Hide buttons, dropdowns, and inputs */
+                        }
+                        @page {
+                            margin: 10mm; /* Consistent margins for all pages */
+                        }
+                        body > *:not(#print-report-full) {
+                            display: none; /* Hide everything except print container */
+                        }
+                        #print-report-full {
+                            position: static !important;
+                            left: 0 !important;
+                        }
                     }
-                    .print-page {
-                        width: 100%;
-                        padding: 10mm;
-                        box-sizing: border-box;
-                    }
-                    .summary-page table {
-                        width: 100%;
-                        border: 2px solid #007bff;
-                        border-collapse: collapse;
-                        margin-top: 10px;
-                        background: #fafafa;
-                        font-size: 12pt;
-                    }
-                    .summary-page th, .summary-page td {
-                        padding: 8px;
-                        border: 1px solid #e0e0e0;
-                        text-align: left;
-                    }
-                    .summary-page h3 {
-                        color: #007bff;
-                        font-size: 16pt;
-                        margin-top: 0;
-                    }
-                    .security-page table, .build-page table {
-                        width: 100%;
-                        border: 2px solid #007bff;
-                        border-collapse: collapse;
-                        margin-top: 10px;
-                        background: #fafafa;
-                        font-size: 12pt;
-                        page-break-inside: auto;
-                    }
-                    .security-page th, .security-page td, .build-page th, .build-page td {
-                        padding: 8px;
-                        border: 1px solid #e0e0e0;
-                        text-align: left;
-                        page-break-inside: avoid;
-                    }
-                    .security-page tr, .build-page tr {
-                        page-break-inside: avoid;
-                        page-break-after: auto;
-                    }
-                    .security-page h3, .build-page h3 {
-                        color: #007bff;
-                        font-size: 16pt;
-                        margin-top: 0;
-                        page-break-before: avoid;
-                    }
-                    .btn, .form-select, .form-control {
-                        display: none; /* Hide buttons, dropdowns, and inputs */
-                    }
-                    @page {
-                        margin: 10mm; /* Consistent margins for all pages */
-                    }
-                }
-            </style>
+                </style>
+            </div>
         </div>
     `;
 
-    // Temporarily replace report content with print layout
-    reportContent.innerHTML = printHtml;
+    // Create a temporary print container
+    const printContainer = document.createElement('div');
+    printContainer.innerHTML = printHtml;
+    document.body.appendChild(printContainer);
 
-    // Trigger print
-    window.print();
-
-    // Restore original content after printing
+    // Ensure DOM is updated, then print
     setTimeout(() => {
-        reportContent.innerHTML = originalContent;
-    }, 100); // Delay to ensure print dialog opens first
+        window.print();
+        
+        // Clean up: Remove temporary container after printing
+        setTimeout(() => {
+            document.body.removeChild(printContainer);
+        }, 100); // Delay to allow print dialog to process
+    }, 50); // Brief delay to ensure rendering
 }
