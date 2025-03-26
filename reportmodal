@@ -1,17 +1,54 @@
 function printReport() {
     // Store original content to restore later
-    const originalContent = document.getElementById("reportContent").innerHTML;
+    const reportContent = document.getElementById("reportContent");
+    if (!reportContent) {
+        console.error("[SuperGrok] Error: reportContent element not found");
+        alert("Unable to print report: Content container missing.");
+        return;
+    }
+    const originalContent = reportContent.innerHTML;
 
-    // Extract sections from the current report content
-    const reportContainer = document.querySelector('.report-container');
-    const summarySection = reportContainer.querySelector('h3:first-child').outerHTML + 
-                           reportContainer.querySelector('table:first-child').outerHTML + 
-                           reportContainer.querySelector('table:nth-child(2)').outerHTML;
-    const buildSection = reportContainer.querySelector('h3:nth-child(2)').outerHTML + 
-                         reportContainer.querySelector('table:nth-child(3)').outerHTML + 
-                         reportContainer.querySelector('table:nth-child(4)').outerHTML;
-    const securitySection = reportContainer.querySelector('h3:last-child').outerHTML + 
-                            reportContainer.querySelector('table:last-child').outerHTML;
+    // Get the report container
+    const reportContainer = reportContent.querySelector('.report-container');
+    if (!reportContainer) {
+        console.error("[SuperGrok] Error: .report-container not found in reportContent");
+        alert("Unable to print report: Report container missing.");
+        return;
+    }
+
+    // Debug: Log the container’s innerHTML to inspect structure
+    console.log("[SuperGrok] Report container content:", reportContainer.innerHTML);
+
+    // Safely extract sections with null checks
+    const summaryHeader = reportContainer.querySelector('h3:first-child');
+    const summaryTable1 = reportContainer.querySelector('table:first-child');
+    const summaryTable2 = reportContainer.querySelector('table:nth-child(2)');
+    const buildHeader = reportContainer.querySelector('h3:nth-child(2)');
+    const buildTable1 = reportContainer.querySelector('table:nth-child(3)');
+    const buildTable2 = reportContainer.querySelector('table:nth-child(4)');
+    const securityHeader = reportContainer.querySelector('h3:last-child');
+    const securityTable = reportContainer.querySelector('table:last-child');
+
+    // Check if all required elements exist
+    if (!summaryHeader || !summaryTable1 || !summaryTable2 || !buildHeader || !buildTable1 || !buildTable2 || !securityHeader || !securityTable) {
+        console.error("[SuperGrok] Error: One or more sections missing in report structure", {
+            summaryHeader: !!summaryHeader,
+            summaryTable1: !!summaryTable1,
+            summaryTable2: !!summaryTable2,
+            buildHeader: !!buildHeader,
+            buildTable1: !!buildTable1,
+            buildTable2: !!buildTable2,
+            securityHeader: !!securityHeader,
+            securityTable: !!securityTable
+        });
+        alert("Unable to print report: Incomplete report structure. Please ensure all sections are generated.");
+        return;
+    }
+
+    // Construct sections with outerHTML
+    const summarySection = summaryHeader.outerHTML + summaryTable1.outerHTML + summaryTable2.outerHTML;
+    const buildSection = buildHeader.outerHTML + buildTable1.outerHTML + buildTable2.outerHTML;
+    const securitySection = securityHeader.outerHTML + securityTable.outerHTML;
 
     // Create print-specific HTML with page breaks and styling
     const printHtml = `
@@ -99,13 +136,13 @@ function printReport() {
     `;
 
     // Temporarily replace report content with print layout
-    document.getElementById("reportContent").innerHTML = printHtml;
+    reportContent.innerHTML = printHtml;
 
     // Trigger print
     window.print();
 
     // Restore original content after printing
     setTimeout(() => {
-        document.getElementById("reportContent").innerHTML = originalContent;
+        reportContent.innerHTML = originalContent;
     }, 100); // Delay to ensure print dialog opens first
 }
