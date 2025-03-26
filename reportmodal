@@ -38,35 +38,37 @@ function printReport() {
     let summaryTable1 = tables[0].outerHTML;
     let summaryTable2 = tables[1].outerHTML;
 
-    // Get current commit_hash (reason) from dropdown
+    // Get current commit_hash (Contrast Verification) from dropdown
     const contrastDropdown = reportContainer.querySelector('.contrast-verification-dropdown');
-    const currentCommitHash = contrastDropdown ? contrastDropdown.value : 'No'; // Default to 'No' if not found
+    const currentCommitHash = contrastDropdown ? contrastDropdown.value : 'No'; // Default to 'No'
+    console.log("[SuperGrok] Contrast Verification (commit_hash):", currentCommitHash);
     summaryTable1 = summaryTable1.replace(
-        /<select class="form-select contrast-verification-dropdown"[^>]*>.*?<\/select>/,
+        /<select[^>]*class="[^"]*contrast-verification-dropdown[^"]*"[^>]*>[\s\S]*?<\/select>/i,
         `<span>${currentCommitHash}</span>`
     );
 
     // Get current description from textarea
     const descriptionTextarea = reportContainer.querySelector('.engagement-description-textarea');
-    const currentDescription = descriptionTextarea ? descriptionTextarea.value : ''; // Default to empty if not found
+    const currentDescription = descriptionTextarea ? descriptionTextarea.value : ''; // Default to empty
+    console.log("[SuperGrok] Description:", currentDescription);
     summaryTable2 = summaryTable2.replace(
-        /<textarea class="form-control engagement-description-textarea"[^>]*>.*?<\/textarea>.*?<button[^>]*>.*?<\/button>/,
+        /<textarea[^>]*class="[^"]*engagement-description-textarea[^"]*"[^>]*>[\s\S]*?<\/textarea>\s*<button[^>]*>[\s\S]*?<\/button>/i,
         `<div style="text-align: justify; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;">${currentDescription || 'N/A'}</div>`
     );
 
     const summarySection = `${summaryHeader}${summaryTable1}${summaryTable2}`;
 
-    // Build Section (no changes needed as it’s static except for manual-testing-reason, which we’ll handle)
+    // Build Section
     const buildHeader = headers[1].outerHTML;
     let buildTable1 = tables[2].outerHTML;
     let buildTable2 = tables[3].outerHTML;
 
     // Replace manual-testing-reason inputs with current values
     const manualInputs = reportContainer.querySelectorAll('.manual-testing-reason');
-    manualInputs.forEach((input, index) => {
+    manualInputs.forEach((input) => {
         const currentValue = input.value || 'N/A';
         buildTable2 = buildTable2.replace(
-            new RegExp(`<input[^>]*class="form-control manual-testing-reason"[^>]*value="${input.value || ''}"[^>]*>`),
+            new RegExp(`<input[^>]*class="[^"]*manual-testing-reason[^"]*"[^>]*data-id="${input.dataset.id}"[^>]*value="[^"]*"[^>]*>`, 'i'),
             `<span>${currentValue}</span>`
         );
     });
@@ -77,27 +79,33 @@ function printReport() {
     const securityHeader = headers[2].outerHTML;
     let securityTable = tables[4].outerHTML;
 
-    // Replace Status dropdowns and Comment inputs with current values
+    // Replace Status (commit_hash) dropdowns with current values
     const statusDropdowns = reportContainer.querySelectorAll('.security-status-dropdown');
-    const commentInputs = reportContainer.querySelectorAll('.security-comment-input');
-    
-    statusDropdowns.forEach((dropdown, index) => {
+    statusDropdowns.forEach((dropdown) => {
         const currentStatus = dropdown.value || 'NA';
+        console.log("[SuperGrok] Security Analysis Status (commit_hash) for data-id=" + dropdown.dataset.id + ":", currentStatus);
         securityTable = securityTable.replace(
-            new RegExp(`<select[^>]*class="form-select security-status-dropdown"[^>]*data-id="${dropdown.dataset.id}"[^>]*>.*?</select>`),
+            new RegExp(`<select[^>]*class="[^"]*security-status-dropdown[^"]*"[^>]*data-id="${dropdown.dataset.id}"[^>]*>[\s\S]*?</select>`, 'i'),
             `<span>${currentStatus}</span>`
         );
     });
 
-    commentInputs.forEach((input, index) => {
+    // Replace Comment inputs with current values
+    const commentInputs = reportContainer.querySelectorAll('.security-comment-input');
+    commentInputs.forEach((input) => {
         const currentComment = input.value || '';
+        console.log("[SuperGrok] Security Analysis Comment (branch_tag) for data-id=" + input.dataset.id + ":", currentComment);
         securityTable = securityTable.replace(
-            new RegExp(`<input[^>]*class="form-control security-comment-input"[^>]*data-id="${input.dataset.id}"[^>]*value="${input.value || ''}"[^>]*>`),
+            new RegExp(`<input[^>]*class="[^"]*security-comment-input[^"]*"[^>]*data-id="${input.dataset.id}"[^>]*value="[^"]*"[^>]*>`, 'i'),
             `<span>${currentComment || 'N/A'}</span>`
         );
     });
 
     const securitySection = `${securityHeader}${securityTable}`;
+
+    // Debug: Log modified sections
+    console.log("[SuperGrok] Modified Summary Section:", summarySection);
+    console.log("[SuperGrok] Modified Security Section:", securitySection);
 
     // Create full HTML document with styling
     const reportHtml = `
