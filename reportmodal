@@ -1,3 +1,4 @@
+
 // Global CSRF token cache
 let cachedCsrfToken = null;
 
@@ -198,7 +199,7 @@ async function generateReport() {
         const statusOptions = ["NA", "Found by code review", "Found by Manual Testing", "Not found"];
         const selectedStatus = test.commit_hash || "NA";
         securityAnalysisContent += `
-            <tr style="background: #fafafa;" data-id="${tc.id}">
+            <tr style="background: #fafafa;" data-id="${test.id}">
                 <td style="padding: 8px; border: 1px solid #e0e0e0;">${index + 1}</td>
                 <td style="padding: 8px; border: 1px solid #e0e0e0;">${test.title || 'N/A'}</td>
                 <td style="padding: 8px; border: 1px solid #e0e0e0;">
