@@ -1,3 +1,4 @@
+// Global CSRF token cache
 let cachedCsrfToken = null;
 
 // Fetch CSRF token from DefectDojo
@@ -86,10 +87,11 @@ async function generateReport() {
                     <td style="padding: 8px; border: 1px solid #e0e0e0;">${functionalJiras}</td>
                     <td style="padding: 8px; border: 1px solid #e0e0e0;">${securityJiras}</td>
                     <td style="padding: 8px; border: 1px solid #e0e0e0;">
-                        <select class="form-select contrast-verification-dropdown" data-id="${engagement.id}">
+                        <select class="form-select contrast-verification-dropdown" id="contrast-verification-${engagement.id}">
                             <option value="No" ${!engagement.reason || engagement.reason === "No" ? 'selected' : ''}>No</option>
                             <option value="Yes" ${engagement.reason === "Yes" ? 'selected' : ''}>Yes</option>
                         </select>
+                        <button class="btn btn-primary mt-2" onclick="updateEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', ${engagement.product}, ${engagement.lead}, document.getElementById('contrast-verification-${engagement.id}').value, '${engagement.description || ''}')">Save</button>
                     </td>
                 </tr>
             </tbody>
@@ -103,8 +105,8 @@ async function generateReport() {
             <tbody>
                 <tr style="background: #fafafa;">
                     <td style="padding: 8px; border: 1px solid #e0e0e0;">
-                        <textarea class="form-control engagement-description-textarea" data-id="${engagement.id}" style="width: 100%; height: 200px; max-width: 10cm; text-align: justify; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;">${engagement.description || ''}</textarea>
-                        <button class="btn btn-primary mt-2 save-description-btn" data-id="${engagement.id}">Save</button>
+                        <textarea class="form-control engagement-description-textarea" id="description-${engagement.id}" style="width: 100%; height: 200px; max-width: 10cm; text-align: justify; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;">${engagement.description || ''}</textarea>
+                        <button class="btn btn-primary mt-2 save-description-btn" onclick="updateEngagement(${engagement.id}, '${engagement.name}', '${engagement.target_start}', '${engagement.target_end}', ${engagement.product}, ${engagement.lead}, '${engagement.reason || 'No'}', document.getElementById('description-${engagement.id}').value)">Save</button>
                     </td>
                 </tr>
             </tbody>
@@ -196,7 +198,7 @@ async function generateReport() {
         const statusOptions = ["NA", "Found by code review", "Found by Manual Testing", "Not found"];
         const selectedStatus = test.commit_hash || "NA";
         securityAnalysisContent += `
-            <tr style="background: #fafafa;" data-id="${test.id}">
+            <tr style="background: #fafafa;" data-id="${tc.id}">
                 <td style="padding: 8px; border: 1px solid #e0e0e0;">${index + 1}</td>
                 <td style="padding: 8px; border: 1px solid #e0e0e0;">${test.title || 'N/A'}</td>
                 <td style="padding: 8px; border: 1px solid #e0e0e0;">
@@ -232,28 +234,6 @@ async function generateReport() {
     `;
     document.getElementById("reportContent").innerHTML = reportContent;
 
-    // Event listeners for Section 1 (Contrast Verification and Description)
-    const contrastDropdown = document.querySelector('.contrast-verification-dropdown');
-    if (contrastDropdown) {
-        contrastDropdown.addEventListener('change', async () => {
-            const engagementId = contrastDropdown.dataset.id;
-            const newValue = contrastDropdown.value;
-            await updateEngagement(engagementId, { reason: newValue }, engagement);
-            showAlert("Contrast Verification Saved", "success", engagement.name);
-        });
-    }
-
-    const saveButton = document.querySelector('.save-description-btn');
-    const textarea = document.querySelector('.engagement-description-textarea');
-    if (saveButton && textarea) {
-        saveButton.addEventListener('click', async () => {
-            const engagementId = saveButton.dataset.id;
-            const newDescription = textarea.value;
-            await updateEngagement(engagementId, { description: newDescription }, engagement);
-            showAlert("Description Saved", "success", engagement.name);
-        });
-    }
-
     // Event listeners for Section 2
     document.querySelectorAll('.manual-testing-reason').forEach(input => {
         input.addEventListener('blur', async () => {
@@ -284,26 +264,24 @@ async function generateReport() {
     });
 }
 
-// SuperGrok Edition: Enhanced PUT request for engagement updates
-async function updateEngagement(engagementId, updates, engagementData) {
+// SuperGrok Edition: PUT request mirroring SCT.html logic
+async function updateEngagement(id, name, target_start, target_end, product, lead, reason, description) {
     try {
         const csrfToken = await fetchCsrfToken();
         if (!csrfToken) throw new Error("[SuperGrok] CSRF token not retrieved");
 
-        // Construct payload with mandatory fields and updates
         const payload = {
-            id: engagementData.id,
-            name: engagementData.name || "Unnamed Engagement", // Fallback if null
-            target_start: engagementData.target_start || "1970-01-01", // Fallback for missing date
-            target_end: engagementData.target_end || "1970-01-01", // Fallback for missing date
-            lead: engagementData.lead || null, // Nullable field
-            product: engagementData.product || null, // Nullable field
-            reason: engagementData.reason || "No", // Default from existing data
-            description: engagementData.description || "", // Default from existing data
-            ...updates // Override with new values (reason or description)
+            id: id,
+            name: name || "Unnamed Engagement",
+            target_start: target_start || "1970-01-01",
+            target_end: target_end || "1970-01-01",
+            product: product || null,
+            lead: lead || null,
+            reason: reason || "No",
+            description: description || ""
         };
 
-        const response = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
+        const response = await fetch(`${BASE_URL}/engagements/${id}/`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
@@ -314,12 +292,16 @@ async function updateEngagement(engagementId, updates, engagementData) {
         });
 
         if (response.ok) {
-            console.log(`[SuperGrok] Updated engagement ${engagementId} with ${JSON.stringify(payload)}`);
-            const engagement = openEngagements.find(eng => eng.id == engagementId);
-            Object.assign(engagement, updates); // Update local data
+            console.log(`[SuperGrok] Updated engagement ${id} with ${JSON.stringify(payload)}`);
+            const engagement = openEngagements.find(eng => eng.id == id);
+            if (engagement) {
+                engagement.reason = reason;
+                engagement.description = description;
+            }
+            showAlert("Engagement Updated", "success", name);
         } else {
             const errorText = await response.text();
-            console.error(`[SuperGrok] Failed to update engagement ${engagementId}: ${errorText}`);
+            console.error(`[SuperGrok] Failed to update engagement ${id}: ${errorText}`);
             showAlert(`Failed to update engagement: ${response.statusText}`, "danger");
         }
     } catch (error) {
@@ -346,6 +328,7 @@ async function updateSecurityTest(testId, payload, engagementName) {
 
         if (response.ok) {
             console.log(`[SuperGrok] Updated test ${testId} with ${JSON.stringify(payload)}`);
+            showAlert("Test Updated", "success", engagementName);
         } else {
             const errorText = await response.text();
             console.error(`[SuperGrok] Failed to update test ${testId}: ${errorText}`);
