@@ -3,14 +3,14 @@ function printReport() {
     const reportContent = document.getElementById("reportContent");
     if (!reportContent) {
         console.error("[SuperGrok] Error: reportContent element not found");
-        alert("Unable to print report: Content container missing.");
+        alert("Unable to generate report: Content container missing.");
         return;
     }
 
     const reportContainer = reportContent.querySelector('.report-container');
     if (!reportContainer) {
         console.error("[SuperGrok] Error: .report-container not found in reportContent");
-        alert("Unable to print report: Report container missing.");
+        alert("Unable to generate report: Report container missing.");
         return;
     }
 
@@ -28,7 +28,7 @@ function printReport() {
             tablesFound: tables.length,
             expected: "3 headers, 5 tables"
         });
-        alert("Unable to print report: Incomplete structure. Expected 3 sections with 5 tables.");
+        alert("Unable to generate report: Incomplete structure. Expected 3 sections with 5 tables.");
         return;
     }
 
@@ -48,126 +48,116 @@ function printReport() {
         ${tables[4].outerHTML}
     `;
 
-    // Create print-specific HTML with page breaks and styling
-    const printHtml = `
-        <div id="print-report-full" style="position: absolute; left: -9999px; top: 0; width: 100%;">
-            <div class="print-report-container">
-                <!-- Page 1: Summary -->
-                <div class="print-page summary-page" style="page-break-after: always;">
-                    <h1 style="text-align: center; color: #007bff; font-size: 24pt; margin-bottom: 20px;">Engagement Summary Report</h1>
+    // Create full HTML document with styling
+    const reportHtml = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Engagement Report</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    margin: 0;
+                    padding: 0;
+                    width: 100%;
+                }
+                .report-container {
+                    width: 100%;
+                    padding: 20mm;
+                    box-sizing: border-box;
+                }
+                h1 {
+                    text-align: center;
+                    color: #007bff;
+                    font-size: 24pt;
+                    margin-bottom: 20px;
+                }
+                h3 {
+                    color: #007bff;
+                    font-size: 16pt;
+                    margin-top: 20px;
+                }
+                table {
+                    width: 100%;
+                    border: 2px solid #007bff;
+                    border-collapse: collapse;
+                    margin-top: 10px;
+                    background: #fafafa;
+                    font-size: 12pt;
+                }
+                th, td {
+                    padding: 8px;
+                    border: 1px solid #e0e0e0;
+                    text-align: left;
+                }
+                .btn, .form-select, .form-control {
+                    display: none; /* Hide buttons, dropdowns, and inputs */
+                }
+                @media print {
+                    .report-container {
+                        padding: 10mm;
+                    }
+                    .summary-section {
+                        page-break-after: always;
+                    }
+                    .security-section {
+                        page-break-before: always;
+                        page-break-after: always;
+                    }
+                    .build-section {
+                        page-break-before: always;
+                    }
+                    table {
+                        page-break-inside: auto;
+                    }
+                    tr {
+                        page-break-inside: avoid;
+                        page-break-after: auto;
+                    }
+                    h3 {
+                        page-break-before: avoid;
+                    }
+                    @page {
+                        margin: 10mm;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="report-container">
+                <!-- Summary Section -->
+                <div class="summary-section">
+                    <h1>Engagement Summary Report</h1>
                     ${summarySection}
                 </div>
 
-                <!-- Page 2: Security Analysis -->
-                <div class="print-page security-page" style="page-break-before: always; page-break-after: always;">
+                <!-- Security Analysis Section -->
+                <div class="security-section">
                     ${securitySection}
                 </div>
 
-                <!-- Page 3+: Build -->
-                <div class="print-page build-page" style="page-break-before: always;">
+                <!-- Build Section -->
+                <div class="build-section">
                     ${buildSection}
                 </div>
-
-                <style>
-                    @media print {
-                        .print-report-container {
-                            width: 100%;
-                            margin: 0;
-                            padding: 0;
-                        }
-                        .print-page {
-                            width: 100%;
-                            padding: 10mm;
-                            box-sizing: border-box;
-                        }
-                        .summary-page table {
-                            width: 100%;
-                            border: 2px solid #007bff;
-                            border-collapse: collapse;
-                            margin-top: 10px;
-                            background: #fafafa;
-                            font-size: 12pt;
-                        }
-                        .summary-page th, .summary-page td {
-                            padding: 8px;
-                            border: 1px solid #e0e0e0;
-                            text-align: left;
-                        }
-                        .summary-page h3 {
-                            color: #007bff;
-                            font-size: 16pt;
-                            margin-top: 0;
-                        }
-                        .security-page table, .build-page table {
-                            width: 100%;
-                            border: 2px solid #007bff;
-                            border-collapse: collapse;
-                            margin-top: 10px;
-                            background: #fafafa;
-                            font-size: 12pt;
-                            page-break-inside: auto;
-                        }
-                        .security-page th, .security-page td, .build-page th, .build-page td {
-                            padding: 8px;
-                            border: 1px solid #e0e0e0;
-                            text-align: left;
-                            page-break-inside: avoid;
-                        }
-                        .security-page tr, .build-page tr {
-                            page-break-inside: avoid;
-                            page-break-after: auto;
-                        }
-                        .security-page h3, .build-page h3 {
-                            color: #007bff;
-                            font-size: 16pt;
-                            margin-top: 0;
-                            page-break-before: avoid;
-                        }
-                        .btn, .form-select, .form-control {
-                            display: none; /* Hide buttons, dropdowns, and inputs */
-                        }
-                        @page {
-                            margin: 10mm; /* Consistent margins for all pages */
-                        }
-                        body > *:not(#print-report-full) {
-                            display: none; /* Hide everything except print container */
-                        }
-                        #print-report-full {
-                            position: static !important;
-                            left: 0 !important;
-                        }
-                    }
-                </style>
             </div>
-        </div>
+        </body>
+        </html>
     `;
 
-    // Create a temporary print container
-    const printContainer = document.createElement('div');
-    printContainer.innerHTML = printHtml;
-    document.body.appendChild(printContainer);
+    // Open the report in a new tab
+    const newTab = window.open('', '_blank');
+    if (!newTab) {
+        console.error("[SuperGrok] Error: Failed to open new tab (popup blocked?)");
+        alert("Unable to open report: Please allow popups for this site.");
+        return;
+    }
 
-    // Function to clean up after printing
-    const cleanup = () => {
-        if (document.body.contains(printContainer)) {
-            document.body.removeChild(printContainer);
-        }
-        window.removeEventListener('afterprint', cleanup); // Remove listener to avoid memory leaks
-    };
+    newTab.document.write(reportHtml);
+    newTab.document.close();
 
-    // Use onafterprint to detect when printing is done
-    window.addEventListener('afterprint', cleanup);
-
-    // Ensure DOM is updated, then print
-    setTimeout(() => {
-        window.print();
-
-        // Fallback: If onafterprint doesn’t fire (e.g., user cancels), clean up after a longer delay
-        setTimeout(() => {
-            if (document.body.contains(printContainer)) {
-                console.warn("[SuperGrok] Fallback cleanup triggered: onafterprint not detected");
-                cleanup();
-            }
-        }, 2000); // 2-second fallback
-    }, 50); // Brief delay to ensure rendering
+    // Optional: Focus the new tab
+    newTab.focus();
 }
