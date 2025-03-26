@@ -1,146 +1,115 @@
-const reportHtml = `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Engagement Report - ${engagementName}</title>
-        <style>
-            body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                margin: 0;
-                padding: 0;
-                background-color: #f8f9fa;
-                color: #212529;
-            }
-            .report-container {
-                max-width: 1200px;
-                margin: 20px auto;
-                padding: 20px;
-                background: #ffffff;
-                border-radius: 8px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            }
-            h1 {
-                color: #007bff;
-                font-size: 2.5rem;
-                text-align: center;
-                margin-bottom: 30px;
-                font-weight: 600;
-            }
-            h3 {
-                color: #0056b3;
-                font-size: 1.75rem;
-                margin-top: 40px;
-                margin-bottom: 20px;
-                border-bottom: 2px solid #007bff;
-                padding-bottom: 5px;
-            }
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 20px;
-                background: #fff;
-                border: 1px solid #dee2e6;
-            }
-            th, td {
-                padding: 12px 15px;
-                text-align: left;
-                border: 1px solid #dee2e6;
-                font-size: 1rem;
-            }
-            th {
-                background-color: #007bff;
-                color: #fff;
-                font-weight: 500;
-            }
-            tr:nth-child(even) {
-                background-color: #f2f2f2;
-            }
-            tr:hover {
-                background-color: #e9ecef;
-            }
-            .btn, .form-select, .form-control {
-                display: none;
-            }
-            .print-btn {
-                display: block;
-                margin: 20px auto;
-                padding: 10px 20px;
-                font-size: 1.1rem;
-                color: #fff;
-                background-color: #28a745;
-                border: none;
-                border-radius: 5px;
-                cursor: pointer;
-                transition: background-color 0.3s;
-            }
-            .print-btn:hover {
-                background-color: #218838;
-            }
-            @media print {
-                body {
-                    background-color: #fff;
-                }
-                .report-container {
-                    margin: 0;
-                    padding: 10mm;
-                    box-shadow: none;
-                    border: none;
-                }
-                .summary-section {
-                    page-break-after: always;
-                }
-                .security-section {
-                    page-break-before: always;
-                    page-break-after: always;
-                }
-                .build-section {
-                    page-break-before: always;
-                }
-                table {
-                    page-break-inside: auto;
-                }
-                tr {
-                    page-break-inside: avoid;
-                    page-break-after: auto;
-                }
-                h3 {
-                    page-break-before: avoid;
-                }
-                @page {
-                    margin: 10mm;
-                }
-                .print-btn {
-                    display: none;
-                }
-            }
-        </style>
-    </head>
-    <body>
-        <div class="report-container">
-            <!-- Summary Section -->
-            <div class="summary-section">
-                <h1>Engagement Summary Report</h1>
-                ${summarySection}
-            </div>
-
-            <!-- Security Analysis Section -->
-            <div class="security-section">
-                ${securitySection}
-            </div>
-
-            <!-- Build Section -->
-            <div class="build-section">
-                ${buildSection}
-            </div>
-
-            <button class="print-btn" onclick="window.print()">Print to PDF</button>
-        </div>
-        <script>
-            // Set document title for PDF filename
-            document.title = '${engagementName.replace(/[^a-zA-Z0-9]/g, '_')}_Report';
-        </script>
-    </body>
-    </html>
-`;
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f8f9fa;
+        color: #212529;
+    }
+    .report-container {
+        max-width: 1200px;
+        margin: 20px auto;
+        padding: 20px;
+        background: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+        color: #007bff;
+        font-size: 2.5rem;
+        text-align: center;
+        margin-bottom: 30px;
+        font-weight: 600;
+    }
+    h3 {
+        color: #0056b3;
+        font-size: 1.75rem;
+        margin-top: 40px;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 5px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+        background: #fff;
+        border: 1px solid #dee2e6;
+    }
+    th, td {
+        padding: 12px 15px;
+        text-align: left;
+        border: 1px solid #dee2e6;
+        font-size: 1rem;
+    }
+    th {
+        background-color: #007bff;
+        color: #fff;
+        font-weight: 500;
+    }
+    tr:nth-child(even) {
+        background-color: #f2f2f2;
+    }
+    tr:hover {
+        background-color: #e9ecef;
+    }
+    .btn, .form-select, .form-control {
+        display: none;
+    }
+    .print-btn {
+        display: block;
+        margin: 20px auto;
+        padding: 10px 20px;
+        font-size: 1.1rem;
+        color: #fff;
+        background-color: #28a745;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+    .print-btn:hover {
+        background-color: #218838;
+    }
+    @media print {
+        body {
+            background-color: #fff;
+        }
+        .report-container {
+            margin: 0;
+            padding: 10mm;
+            box-shadow: none;
+            border: none;
+        }
+        .summary-section {
+            page-break-after: always;
+        }
+        .security-section {
+            page-break-before: always;
+            page-break-after: always;
+        }
+        .build-section {
+            page-break-before: always;
+        }
+        table {
+            page-break-inside: auto;
+        }
+        tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+        h3 {
+            page-break-before: avoid;
+        }
+        th {
+            background-color: #007bff !important; /* Ensure header color persists in PDF */
+            color: #fff !important;
+        }
+        @page {
+            margin: 10mm;
+        }
+        .print-btn {
+            display: none;
+        }
+    }
+</style>
