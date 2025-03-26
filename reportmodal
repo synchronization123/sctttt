@@ -75,64 +75,62 @@ async function generateReport() {
     }
 
     const testCases = engagement.testCases;
-    const today = new Date().toISOString().split('T')[0]; // e.g., "2025-03-26"
+    const today = new Date().toISOString().split('T')[0];
     const functionalJiras = testCases.filter(tc => tc.commit_hash !== "Security").length;
     const securityJiras = testCases.filter(tc => tc.commit_hash === "Security").length;
 
     // Section 1: Summary
     let summaryContent = `
-        <h3 style="color: var(--bs-blue); margin-top: 20px;">Summary</h3>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 2px solid #007bff;">
-            <thead>
-                <tr style="background: var(--bs-gray-200);">
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Build</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Date</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;" colspan="2">Total Changelog</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Contrast Verification</th>
-                </tr>
-                <tr style="background: var(--bs-gray-200);">
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;"></th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;"></th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Functional Jira</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Security Jira</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;"></th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr style="background: #fafafa;">
-                    <td style="padding: 8px; border: 1px solid #e0e0e0;">${engagement.name}</td>
-                    <td style="padding: 8px; border: 1px solid #e0e0e0;">${today}</td>
-                    <td style="padding: 8px; border: 1px solid #e0e0e0;">${functionalJiras}</td>
-                    <td style="padding: 8px; border: 1px solid #e0e0e0;">${securityJiras}</td>
-                    <td style="padding: 8px; border: 1px solid #e0e0e0;">
-                        <select class="form-select contrast-verification-dropdown" data-id="${reportingTest.id}">
-                            <option value="No" ${!reportingTest.commit_hash || reportingTest.commit_hash === "No" ? 'selected' : ''}>No</option>
-                            <option value="Yes" ${reportingTest.commit_hash === "Yes" ? 'selected' : ''}>Yes</option>
-                        </select>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 20px; border: 2px solid #007bff;">
-            <thead>
-                <tr style="background: var(--bs-gray-200);">
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Description</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr style="background: #fafafa;">
-                    <td style="padding: 8px; border: 1px solid #e0e0e0;">
-                        <textarea class="form-control engagement-description-textarea" data-id="${reportingTest.id}" style="width: 100%; height: 200px; max-width: 10cm; text-align: justify; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;">${reportingTest.description || ''}</textarea>
-                        <button class="btn btn-primary mt-2 save-description-btn" data-id="${reportingTest.id}">Save</button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="summary-section" style="page-break-after: always;">
+            <h3 style="color: var(--bs-blue); margin-top: 20px; text-align: center;">Summary</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 2px solid #007bff;">
+                <thead>
+                    <tr style="background: var(--bs-gray-200);">
+                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Build</th>
+                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Date</th>
+                        <th style="padding: 8px; border: 1px solid #e0e0e0;" colspan="2">Total Changelog</th>
+                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Contrast Verification</th>
+                    </tr>
+                    <tr style="background: var(--bs-gray-200);">
+                        <th style="padding: 8px; border: 1px solid #e0e0e0;"></th>
+                        <th style="padding: 8px; border: 1px solid #e0e0e0;"></th>
+                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Functional Jira</th>
+                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Security Jira</th>
+                        <th style="padding: 8px; border: 1px solid #e0e0e0;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="background: #fafafa;">
+                        <td style="padding: 8px; border: 1px solid #e0e0e0;">${engagement.name}</td>
+                        <td style="padding: 8px; border: 1px solid #e0e0e0;">${today}</td>
+                        <td style="padding: 8px; border: 1px solid #e0e0e0;">${functionalJiras}</td>
+                        <td style="padding: 8px; border: 1px solid #e0e0e0;">${securityJiras}</td>
+                        <td style="padding: 8px; border: 1px solid #e0e0e0;" class="contrast-verification-static">${reportingTest.commit_hash || "No"}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 20px; border: 2px solid #007bff;">
+                <thead>
+                    <tr style="background: var(--bs-gray-200);">
+                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="background: #fafafa;">
+                        <td style="padding: 8px; border: 1px solid #e0e0e0;">
+                            <textarea class="form-control engagement-description-textarea" data-id="${reportingTest.id}" style="width: 20cm; height: 10cm; text-align: justify; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;">${reportingTest.description || ''}</textarea>
+                            <button class="btn btn-primary mt-2 save-description-btn" data-id="${reportingTest.id}">Save</button>
+                            <div class="description-static" style="display: none; text-align: justify; width: 20cm; min-height: 10cm; padding: 8px; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;">${reportingTest.description || ''}</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     `;
 
     // Section 2: Build
     let buildOverviewContent = `
-        <h3 style="color: var(--bs-blue); margin-top: 20px;">Build</h3>
+        <h3 style="color: var(--bs-blue); margin-top: 20px; text-align: center;">Build</h3>
         <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 2px solid #007bff;">
             <thead>
                 <tr style="background: var(--bs-gray-200);">
@@ -152,7 +150,7 @@ async function generateReport() {
     `;
 
     let buildDetailsContent = `
-        <table style="width: 100%; border-collapse: collapse; margin-top: 20px; border: 2px solid #007bff;">
+        <table style="width: 100%; border-collapse: collapse; margin-top: 20px; border: 2px solid #007bff; page-break-inside: auto;">
             <thead>
                 <tr style="background: var(--bs-gray-200);">
                     <th style="padding: 8px; border: 1px solid #e0e0e0;">Changelog Reviewers</th>
@@ -184,14 +182,12 @@ async function generateReport() {
                 <td style="padding: 8px; border: 1px solid #e0e0e0;">${secureCodeReview}</td>
                 <td style="padding: 8px; border: 1px solid #e0e0e0;">${manualSecurityTesting}</td>
                 <td style="padding: 8px; border: 1px solid #e0e0e0; max-width: 5cm; word-wrap: break-word; overflow-wrap: break-word; white-space: normal; text-align: justify;">${tc.description || 'N/A'}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">
-                    <input type="text" class="form-control manual-testing-reason" data-id="${tc.id}" value="${tc.build_id || ''}" />
-                </td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;" class="manual-testing-static">${tc.build_id || ''}</td>
             </tr>
         `;
     });
     buildDetailsContent += `</tbody></table>`;
-    const buildContent = buildOverviewContent + buildDetailsContent;
+    const buildContent = `<div class="build-section" style="page-break-before: always;">${buildOverviewContent}${buildDetailsContent}</div>`;
 
     // Section 3: Security Analysis
     const securityResponse = await fetch(`${BASE_URL}/tests/?engagement=${engagementId}&tags=risk_register`);
@@ -199,17 +195,18 @@ async function generateReport() {
     const securityTests = securityData.results || [];
 
     let securityAnalysisContent = `
-        <h3 style="color: var(--bs-blue); margin-top: 20px;">Security Analysis</h3>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 2px solid #007bff;">
-            <thead>
-                <tr style="background: var(--bs-gray-200);">
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Sr. No.</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Category</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Status</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Comment</th>
-                </tr>
-            </thead>
-            <tbody id="securityAnalysisTableBody">
+        <div class="security-analysis-section" style="page-break-before: always;">
+            <h3 style="color: var(--bs-blue); margin-top: 20px; text-align: center;">Security Analysis</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 2px solid #007bff; page-break-inside: auto;">
+                <thead>
+                    <tr style="background: var(--bs-gray-200);">
+                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Sr. No.</th>
+                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Category</th>
+                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Status</th>
+                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Comment</th>
+                    </tr>
+                </thead>
+                <tbody id="securityAnalysisTableBody">
     `;
     securityTests.forEach((test, index) => {
         const statusOptions = ["NA", "Found by code review", "Found by Manual Testing", "Not found"];
@@ -218,34 +215,72 @@ async function generateReport() {
             <tr style="background: #fafafa;" data-id="${test.id}">
                 <td style="padding: 8px; border: 1px solid #e0e0e0;">${index + 1}</td>
                 <td style="padding: 8px; border: 1px solid #e0e0e0;">${test.title || 'N/A'}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">
-                    <select class="form-select security-status-dropdown" data-id="${test.id}">
-                        ${statusOptions.map(option => `<option value="${option}" ${option === selectedStatus ? 'selected' : ''}>${option}</option>`).join('')}
-                    </select>
-                </td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">
-                    <input type="text" class="form-control security-comment-input" data-id="${test.id}" value="${test.branch_tag || ''}" />
-                </td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;" class="security-status-static">${selectedStatus}</td>
+                <td style="padding: 8px; border: 1px solid #e0e0e0;" class="security-comment-static">${test.branch_tag || ''}</td>
             </tr>
         `;
     });
-    securityAnalysisContent += `</tbody></table>`;
+    securityAnalysisContent += `</tbody></table></div>`;
 
     // Combine sections with Print button
     const reportContent = `
         <div class="report-container" style="padding: 20px; background: #fff; border: 3px solid #007bff; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-            ${summaryContent}${buildContent}${securityAnalysisContent}
+            ${summaryContent}${securityAnalysisContent}${buildContent}
             <button class="btn btn-success mt-3 print-report-btn" onclick="printReport()">Print Report</button>
         </div>
         <style>
             @media print {
-                .report-container { width: 100%; margin: 0; padding: 10mm; border: 2px solid #007bff; box-shadow: none; }
-                table { page-break-inside: auto; width: 100%; }
-                tr { page-break-inside: avoid; page-break-after: auto; }
-                th, td { font-size: 12pt; }
-                .btn, .form-select, .form-control { display: none; }
-                h3 { color: #007bff; font-size: 16pt; }
-                @page { margin: 10mm; }
+                .report-container { 
+                    padding: 0; 
+                    border: none; 
+                    box-shadow: none; 
+                    background: none; 
+                }
+                .summary-section { 
+                    padding: 10mm; 
+                    border: 2px solid #007bff; 
+                    margin-bottom: 0; 
+                }
+                .security-analysis-section, .build-section { 
+                    padding: 10mm; 
+                    border: 2px solid #007bff; 
+                }
+                table { 
+                    width: 100%; 
+                    page-break-inside: auto; 
+                    border-collapse: collapse; 
+                }
+                tr { 
+                    page-break-inside: avoid; 
+                    page-break-after: auto; 
+                }
+                th, td { 
+                    font-size: 12pt; 
+                    border: 1px solid #e0e0e0; 
+                    padding: 8px; 
+                }
+                h3 { 
+                    color: #007bff; 
+                    font-size: 16pt; 
+                    font-weight: bold; 
+                }
+                .btn, .form-select, .form-control { 
+                    display: none; 
+                }
+                .contrast-verification-static, .manual-testing-static, .security-status-static, .security-comment-static { 
+                    display: block; 
+                }
+                .description-static { 
+                    display: block; 
+                    border: 1px solid #e0e0e0; 
+                    padding: 8px; 
+                }
+                .engagement-description-textarea { 
+                    display: none !important; 
+                }
+                @page { 
+                    margin: 10mm; 
+                }
             }
         </style>
     `;
@@ -259,6 +294,7 @@ async function generateReport() {
             const newValue = contrastDropdown.value;
             await updateReportingTest(testId, { commit_hash: newValue }, reportingTest, engagement.name);
             showAlert("Contrast Verification Saved", "success", engagement.name);
+            document.querySelector('.contrast-verification-static').textContent = newValue;
         });
     }
 
@@ -270,6 +306,7 @@ async function generateReport() {
             const newDescription = textarea.value;
             await updateReportingTest(testId, { description: newDescription }, reportingTest, engagement.name);
             showAlert("Description Saved", "success", engagement.name);
+            document.querySelector('.description-static').textContent = newDescription;
         });
     }
 
@@ -280,6 +317,7 @@ async function generateReport() {
             const newReason = input.value;
             await updateSecurityTest(testId, { build_id: newReason }, engagement.name);
             showAlert("Manual Testing Reason Saved", "success", engagement.name);
+            input.nextElementSibling.textContent = newReason; // Update static content if needed
         });
     });
 
@@ -290,6 +328,7 @@ async function generateReport() {
             const newStatus = dropdown.value;
             await updateSecurityTest(testId, { commit_hash: newStatus }, engagement.name);
             showAlert("Status Saved", "success", engagement.name);
+            dropdown.nextElementSibling.textContent = newStatus; // Update static content if needed
         });
     });
 
@@ -299,6 +338,7 @@ async function generateReport() {
             const newComment = input.value;
             await updateSecurityTest(testId, { branch_tag: newComment }, engagement.name);
             showAlert("Comment Saved", "success", engagement.name);
+            input.nextElementSibling.textContent = newComment; // Update static content if needed
         });
     });
 }
@@ -309,20 +349,19 @@ async function updateReportingTest(testId, updates, testData, engagementName) {
         const csrfToken = await fetchCsrfToken();
         if (!csrfToken) throw new Error("[SuperGrok] CSRF token not retrieved");
 
-        const today = new Date().toISOString().split('T')[0]; // Current date, e.g., "2025-03-26"
+        const today = new Date().toISOString().split('T')[0];
 
-        // Construct payload with mandatory fields and updates
         const payload = {
             id: testData.id,
-            title: testData.title || "Reporting Test", // Fallback if null
-            engagement: testData.engagement || testData.engagement_id, // Adjust based on API structure
-            target_start: testData.target_start || today, // Use today if not set
-            target_end: testData.target_end || today, // Use today if not set
-            lead: testData.lead || 2, // Default to 2 as specified
-            test_type: testData.test_type || 207, // Default to 207 as specified
-            description: testData.description || "", // Default from existing data
-            commit_hash: testData.commit_hash || "No", // Default from existing data
-            ...updates // Override with new values (commit_hash or description)
+            title: testData.title || "Reporting Test",
+            engagement: testData.engagement || testData.engagement_id,
+            target_start: testData.target_start || today,
+            target_end: testData.target_end || today,
+            lead: testData.lead || 2,
+            test_type: testData.test_type || 207,
+            description: testData.description || "",
+            commit_hash: testData.commit_hash || "No",
+            ...updates
         };
 
         const response = await fetch(`${BASE_URL}/tests/${testId}/`, {
@@ -337,7 +376,7 @@ async function updateReportingTest(testId, updates, testData, engagementName) {
 
         if (response.ok) {
             console.log(`[SuperGrok] Updated reporting test ${testId} with ${JSON.stringify(payload)}`);
-            Object.assign(testData, updates); // Update local test data
+            Object.assign(testData, updates);
         } else {
             const errorText = await response.text();
             console.error(`[SuperGrok] Failed to update test ${testId}: ${errorText}`);
