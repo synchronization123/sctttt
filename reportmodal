@@ -14,178 +14,169 @@ function printReport() {
         return;
     }
 
-    // Fetch engagement name from the first table’s Build column (assumes it’s the engagement name)
-    const engagementNameCell = reportContainer.querySelector('table:first-child tbody tr td:first-child');
-    const engagementName = engagementNameCell ? engagementNameCell.textContent.trim() : 'Engagement_Report';
-    console.log("[SuperGrok] Engagement Name:", engagementName);
+    // Debug: Log the container’s structure
+    console.log("[SuperGrok] Report container content:", reportContainer.innerHTML);
 
     // Fetch all h3 and table elements
     const headers = reportContainer.querySelectorAll('h3');
     const tables = reportContainer.querySelectorAll('table');
 
-    // Validate structure: Expecting at least 1 header and 2 tables for Summary
-    if (headers.length < 1 || tables.length < 2) {
-        console.error("[SuperGrok] Error: Incomplete summary structure", {
+    // Validate structure: Expecting 3 headers and 5 tables
+    if (headers.length < 3 || tables.length < 5) {
+        console.error("[SuperGrok] Error: Incomplete report structure", {
             headersFound: headers.length,
             tablesFound: tables.length,
-            expected: "At least 1 header and 2 tables"
+            expected: "3 headers, 5 tables"
         });
-        alert("Unable to generate summary report: Incomplete structure.");
+        alert("Unable to generate report: Incomplete structure. Expected 3 sections with 5 tables.");
         return;
     }
 
-    // Extract and modify Summary section with current values
+    // Extract and modify sections with current values
+    // Summary Section
     const summaryHeader = headers[0].outerHTML;
-    let summaryTable1 = tables[0].outerHTML; // Contrast Verification table
-    let summaryTable2 = tables[1].outerHTML; // Description table
+    let summaryTable1 = tables[0].outerHTML;
+    let summaryTable2 = tables[1].outerHTML;
 
     // Get current commit_hash (Contrast Verification) from dropdown
     const contrastDropdown = reportContainer.querySelector('.contrast-verification-dropdown');
-    const currentCommitHash = contrastDropdown ? contrastDropdown.value : 'No';
+    const currentCommitHash = contrastDropdown ? contrastDropdown.value : 'No'; // Default to 'No'
     console.log("[SuperGrok] Contrast Verification (commit_hash):", currentCommitHash);
     summaryTable1 = summaryTable1.replace(
         /<select[^>]*class="[^"]*contrast-verification-dropdown[^"]*"[^>]*>[\s\S]*?<\/select>/i,
-        `<span class="badge ${currentCommitHash === 'Yes' ? 'bg-success' : 'bg-secondary'}">${currentCommitHash}</span>`
+        `<span>${currentCommitHash}</span>`
     );
 
     // Get current description from textarea
     const descriptionTextarea = reportContainer.querySelector('.engagement-description-textarea');
-    const currentDescription = descriptionTextarea ? descriptionTextarea.value : '';
+    const currentDescription = descriptionTextarea ? descriptionTextarea.value : ''; // Default to empty
     console.log("[SuperGrok] Description:", currentDescription);
     summaryTable2 = summaryTable2.replace(
         /<textarea[^>]*class="[^"]*engagement-description-textarea[^"]*"[^>]*>[\s\S]*?<\/textarea>\s*<button[^>]*>[\s\S]*?<\/button>/i,
-        `<p class="text-muted" style="text-align: justify; word-wrap: break-word; overflow-wrap: break-word; white-space: normal; margin: 0;">${currentDescription || 'N/A'}</p>`
+        `<div style="text-align: justify; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;">${currentDescription || 'N/A'}</div>`
     );
 
     const summarySection = `${summaryHeader}${summaryTable1}${summaryTable2}`;
 
-    // Create beautiful Summary HTML with Bootstrap-like inline CSS
+    // Build Section
+    const buildHeader = headers[1].outerHTML;
+    let buildTable1 = tables[2].outerHTML;
+    let buildTable2 = tables[3].outerHTML;
+
+    // Replace manual-testing-reason inputs with current values
+    const manualInputs = reportContainer.querySelectorAll('.manual-testing-reason');
+    manualInputs.forEach((input) => {
+        const currentValue = input.value || 'N/A';
+        buildTable2 = buildTable2.replace(
+            new RegExp(`<input[^>]*class="[^"]*manual-testing-reason[^"]*"[^>]*data-id="${input.dataset.id}"[^>]*value="[^"]*"[^>]*>`, 'i'),
+            `<span>${currentValue}</span>`
+        );
+    });
+
+    const buildSection = `${buildHeader}${buildTable1}${buildTable2}`;
+
+    // Security Analysis Section
+    const securityHeader = headers[2].outerHTML;
+    let securityTable = tables[4].outerHTML;
+
+    // Replace Status (commit_hash) dropdowns with current values
+    const statusDropdowns = reportContainer.querySelectorAll('.security-status-dropdown');
+    console.log("[SuperGrok] Found", statusDropdowns.length, "security-status-dropdown elements");
+    statusDropdowns.forEach((dropdown, index) => {
+        const currentStatus = dropdown.value || 'NA';
+        console.log(`[SuperGrok] Security Analysis Status (commit_hash) #${index + 1} (data-id=${dropdown.dataset.id}):`, currentStatus);
+        const dropdownHtml = dropdown.outerHTML.replace(/[.+*?^$()[\]{}\\|]/g, '\\$&'); // Escape special regex chars
+        const regex = new RegExp(dropdownHtml, 'i');
+        securityTable = securityTable.replace(regex, `<span>${currentStatus}</span>`);
+    });
+
+    // Replace Comment inputs with current values
+    const commentInputs = reportContainer.querySelectorAll('.security-comment-input');
+    commentInputs.forEach((input) => {
+        const currentComment = input.value || '';
+        console.log("[SuperGrok] Security Analysis Comment (branch_tag) for data-id=" + input.dataset.id + ":", currentComment);
+        securityTable = securityTable.replace(
+            new RegExp(`<input[^>]*class="[^"]*security-comment-input[^"]*"[^>]*data-id="${input.dataset.id}"[^>]*value="[^"]*"[^>]*>`, 'i'),
+            `<span>${currentComment || 'N/A'}</span>`
+        );
+    });
+
+    const securitySection = `${securityHeader}${securityTable}`;
+
+    // Debug: Log modified sections
+    console.log("[SuperGrok] Modified Summary Section:", summarySection);
+    console.log("[SuperGrok] Modified Security Section:", securitySection);
+
+    // Create full HTML document with styling
     const reportHtml = `
         <!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>${engagementName} - Summary Report</title>
+            <title>Engagement Report</title>
             <style>
                 body {
-                    font-family: 'Segoe UI', Arial, sans-serif;
-                    background: linear-gradient(to bottom, #f8f9fa, #e9ecef);
+                    font-family: Arial, sans-serif;
                     margin: 0;
                     padding: 0;
-                    min-height: 100vh;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
+                    width: 100%;
                 }
                 .report-container {
                     width: 100%;
-                    max-width: 900px;
-                    background: #ffffff;
-                    border-radius: 12px;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-                    padding: 30px;
-                    margin: 20px;
+                    padding: 20mm;
+                    box-sizing: border-box;
                 }
                 h1 {
-                    color: #0d6efd;
-                    font-size: 2.5rem;
-                    font-weight: 700;
                     text-align: center;
-                    margin-bottom: 30px;
-                    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.05);
+                    color: #007bff;
+                    font-size: 24pt;
+                    margin-bottom: 20px;
                 }
                 h3 {
-                    color: #0d6efd;
-                    font-size: 1.75rem;
-                    font-weight: 600;
-                    margin-top: 0;
-                    margin-bottom: 20px;
-                    border-bottom: 2px solid #0d6efd;
-                    padding-bottom: 5px;
+                    color: #007bff;
+                    font-size: 16pt;
+                    margin-top: 20px;
                 }
                 table {
                     width: 100%;
+                    border: 2px solid #007bff;
                     border-collapse: collapse;
-                    margin-bottom: 20px;
-                    background: #fff;
-                    border-radius: 8px;
-                    overflow: hidden;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                    margin-top: 10px;
+                    background: #fafafa;
+                    font-size: 12pt;
                 }
                 th, td {
-                    padding: 12px 15px;
+                    padding: 8px;
+                    border: 1px solid #e0e0e0;
                     text-align: left;
-                    border-bottom: 1px solid #dee2e6;
                 }
-                th {
-                    background: #0d6efd;
-                    color: #ffffff;
-                    font-weight: 600;
-                }
-                tr:nth-child(even) {
-                    background: #f8f9fa;
-                }
-                tr:hover {
-                    background: #e9ecef;
-                }
-                .badge {
-                    padding: 5px 10px;
-                    border-radius: 12px;
-                    font-size: 0.9rem;
-                }
-                .bg-success {
-                    background-color: #198754;
-                    color: #ffffff;
-                }
-                .bg-secondary {
-                    background-color: #6c757d;
-                    color: #ffffff;
-                }
-                .text-muted {
-                    color: #6c757d;
-                }
-                .print-btn {
-                    display: block;
-                    width: 200px;
-                    margin: 20px auto 0;
-                    padding: 10px;
-                    background: #0d6efd;
-                    color: #ffffff;
-                    border: none;
-                    border-radius: 25px;
-                    font-size: 1.1rem;
-                    font-weight: 600;
-                    cursor: pointer;
-                    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-                    transition: background 0.3s ease;
-                }
-                .print-btn:hover {
-                    background: #0b5ed7;
+                .btn, .form-select, .form-control {
+                    display: none; /* Hide buttons, dropdowns, and inputs */
                 }
                 @media print {
-                    body {
-                        background: #ffffff;
-                        display: block;
-                    }
                     .report-container {
-                        margin: 0;
                         padding: 10mm;
-                        box-shadow: none;
-                        border-radius: 0;
-                        max-width: none;
                     }
-                    h1 {
-                        font-size: 2rem;
+                    .summary-section {
+                        page-break-after: always;
                     }
-                    h3 {
-                        font-size: 1.5rem;
+                    .security-section {
+                        page-break-before: always;
+                        page-break-after: always;
+                    }
+                    .build-section {
+                        page-break-before: always;
                     }
                     table {
-                        box-shadow: none;
+                        page-break-inside: auto;
                     }
-                    .print-btn {
-                        display: none;
+                    tr {
+                        page-break-inside: avoid;
+                        page-break-after: auto;
+                    }
+                    h3 {
+                        page-break-before: avoid;
                     }
                     @page {
                         margin: 10mm;
@@ -195,14 +186,22 @@ function printReport() {
         </head>
         <body>
             <div class="report-container">
-                <h1>${engagementName} - Summary Report</h1>
-                ${summarySection}
-                <button class="print-btn" onclick="window.print()">Print as PDF</button>
+                <!-- Summary Section -->
+                <div class="summary-section">
+                    <h1>Engagement Summary Report</h1>
+                    ${summarySection}
+                </div>
+
+                <!-- Security Analysis Section -->
+                <div class="security-section">
+                    ${securitySection}
+                </div>
+
+                <!-- Build Section -->
+                <div class="build-section">
+                    ${buildSection}
+                </div>
             </div>
-            <script>
-                // Set document title for PDF filename
-                document.title = '${engagementName}_Summary';
-            </script>
         </body>
         </html>
     `;
@@ -218,6 +217,6 @@ function printReport() {
     newTab.document.write(reportHtml);
     newTab.document.close();
 
-    // Focus the new tab
+    // Optional: Focus the new tab
     newTab.focus();
 }
