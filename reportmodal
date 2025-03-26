@@ -16,39 +16,39 @@ function printReport() {
         return;
     }
 
-    // Debug: Log the container’s innerHTML to inspect structure
+    // Debug: Log the container’s structure
     console.log("[SuperGrok] Report container content:", reportContainer.innerHTML);
 
-    // Safely extract sections with null checks
-    const summaryHeader = reportContainer.querySelector('h3:first-child');
-    const summaryTable1 = reportContainer.querySelector('table:first-child');
-    const summaryTable2 = reportContainer.querySelector('table:nth-child(2)');
-    const buildHeader = reportContainer.querySelector('h3:nth-child(2)');
-    const buildTable1 = reportContainer.querySelector('table:nth-child(3)');
-    const buildTable2 = reportContainer.querySelector('table:nth-child(4)');
-    const securityHeader = reportContainer.querySelector('h3:last-child');
-    const securityTable = reportContainer.querySelector('table:last-child');
+    // Fetch all h3 and table elements
+    const headers = reportContainer.querySelectorAll('h3');
+    const tables = reportContainer.querySelectorAll('table');
 
-    // Check if all required elements exist
-    if (!summaryHeader || !summaryTable1 || !summaryTable2 || !buildHeader || !buildTable1 || !buildTable2 || !securityHeader || !securityTable) {
-        console.error("[SuperGrok] Error: One or more sections missing in report structure", {
-            summaryHeader: !!summaryHeader,
-            summaryTable1: !!summaryTable1,
-            summaryTable2: !!summaryTable2,
-            buildHeader: !!buildHeader,
-            buildTable1: !!buildTable1,
-            buildTable2: !!buildTable2,
-            securityHeader: !!securityHeader,
-            securityTable: !!securityTable
+    // Validate structure: Expecting 3 headers and 5 tables
+    if (headers.length < 3 || tables.length < 5) {
+        console.error("[SuperGrok] Error: Incomplete report structure", {
+            headersFound: headers.length,
+            tablesFound: tables.length,
+            expected: "3 headers, 5 tables"
         });
-        alert("Unable to print report: Incomplete report structure. Please ensure all sections are generated.");
+        alert("Unable to print report: Incomplete structure. Expected 3 sections with 5 tables.");
         return;
     }
 
-    // Construct sections with outerHTML
-    const summarySection = summaryHeader.outerHTML + summaryTable1.outerHTML + summaryTable2.outerHTML;
-    const buildSection = buildHeader.outerHTML + buildTable1.outerHTML + buildTable2.outerHTML;
-    const securitySection = securityHeader.outerHTML + securityTable.outerHTML;
+    // Extract sections explicitly
+    const summarySection = `
+        ${headers[0].outerHTML}
+        ${tables[0].outerHTML}
+        ${tables[1].outerHTML}
+    `;
+    const buildSection = `
+        ${headers[1].outerHTML}
+        ${tables[2].outerHTML}
+        ${tables[3].outerHTML}
+    `;
+    const securitySection = `
+        ${headers[2].outerHTML}
+        ${tables[4].outerHTML}
+    `;
 
     // Create print-specific HTML with page breaks and styling
     const printHtml = `
