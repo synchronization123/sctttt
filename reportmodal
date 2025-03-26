@@ -81,13 +81,13 @@ function printReport() {
 
     // Replace Status (commit_hash) dropdowns with current values
     const statusDropdowns = reportContainer.querySelectorAll('.security-status-dropdown');
-    statusDropdowns.forEach((dropdown) => {
+    console.log("[SuperGrok] Found", statusDropdowns.length, "security-status-dropdown elements");
+    statusDropdowns.forEach((dropdown, index) => {
         const currentStatus = dropdown.value || 'NA';
-        console.log("[SuperGrok] Security Analysis Status (commit_hash) for data-id=" + dropdown.dataset.id + ":", currentStatus);
-        securityTable = securityTable.replace(
-            new RegExp(`<select[^>]*class="[^"]*security-status-dropdown[^"]*"[^>]*data-id="${dropdown.dataset.id}"[^>]*>[\s\S]*?</select>`, 'i'),
-            `<span>${currentStatus}</span>`
-        );
+        console.log(`[SuperGrok] Security Analysis Status (commit_hash) #${index + 1} (data-id=${dropdown.dataset.id}):`, currentStatus);
+        const dropdownHtml = dropdown.outerHTML.replace(/[.+*?^$()[\]{}\\|]/g, '\\$&'); // Escape special regex chars
+        const regex = new RegExp(dropdownHtml, 'i');
+        securityTable = securityTable.replace(regex, `<span>${currentStatus}</span>`);
     });
 
     // Replace Comment inputs with current values
