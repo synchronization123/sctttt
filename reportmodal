@@ -1,423 +1,111 @@
-// Global CSRF token cache
-let cachedCsrfToken = null;
-
-// Fetch CSRF token from DefectDojo
-async function fetchCsrfToken() {
-    if (cachedCsrfToken) return cachedCsrfToken;
-
-    try {
-        const response = await fetch('https://demo.defectdojo.org/api/key-v2', {
-            method: "GET",
-            credentials: "include"
-        });
-        if (!response.ok) throw new Error("Failed to fetch CSRF token page");
-
-        const htmlText = await response.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(htmlText, 'text/html');
-        const csrfInput = doc.querySelector('input[name="csrfmiddlewaretoken"]');
-        if (!csrfInput) throw new Error("CSRF token not found in HTML");
-
-        cachedCsrfToken = csrfInput.value;
-        return cachedCsrfToken;
-    } catch (error) {
-        console.error("[SuperGrok] Error fetching CSRF token:", error);
-        throw error;
-    }
-}
-
-async function generateReport() {
-    const engagementId = document.getElementById("reportEngagementSelect").value;
-    if (!engagementId) {
-        document.getElementById("reportContent").innerHTML = '<p style="color: #721c24;">Please select an engagement to generate the report.</p>';
-        return;
-    }
-
-    // Fetch engagement data (for basic info)
-    let engagement;
-    try {
-        const response = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
-            method: "GET",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include"
-        });
-        if (!response.ok) throw new Error("Failed to fetch engagement data");
-        engagement = await response.json();
-    } catch (error) {
-        console.error("[SuperGrok] Error fetching engagement:", error);
-        document.getElementById("reportContent").innerHTML = '<p style="color: #721c24;">Error fetching engagement data!</p>';
-        return;
-    }
-
-    // Fetch test data for description and commit_hash
-    let reportingTest;
-    try {
-        const response = await fetch(`${BASE_URL}/tests/?engagement=${engagementId}&tags=reporting`, {
-            method: "GET",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include"
-        });
-        if (!response.ok) throw new Error("Failed to fetch reporting test data");
-        const data = await response.json();
-        reportingTest = data.results && data.results.length > 0 ? data.results[0] : null;
-        if (!reportingTest) throw new Error("No test found with tag 'reporting'");
-    } catch (error) {
-        console.error("[SuperGrok] Error fetching reporting test:", error);
-        document.getElementById("reportContent").innerHTML = '<p style="color: #721c24;">Error fetching reporting test data!</p>';
-        return;
-    }
-
-    // Fetch test cases for Build section
-    if (!engagement.testCases || engagement.testCases.length === 0) {
-        const response = await fetch(`${BASE_URL}/tests/?engagement=${engagement.id}`);
-        const data = await response.json();
-        engagement.testCases = data.results || [];
-    }
-
-    const testCases = engagement.testCases;
-    const today = new Date().toISOString().split('T')[0];
-    const functionalJiras = testCases.filter(tc => tc.commit_hash !== "Security").length;
-    const securityJiras = testCases.filter(tc => tc.commit_hash === "Security").length;
-
-    // Section 1: Summary
-    let summaryContent = `
-        <div class="summary-section" style="page-break-after: always;">
-            <h3 style="color: var(--bs-blue); margin-top: 20px; text-align: center;">Summary</h3>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 2px solid #007bff;">
-                <thead>
-                    <tr style="background: var(--bs-gray-200);">
-                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Build</th>
-                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Date</th>
-                        <th style="padding: 8px; border: 1px solid #e0e0e0;" colspan="2">Total Changelog</th>
-                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Contrast Verification</th>
-                    </tr>
-                    <tr style="background: var(--bs-gray-200);">
-                        <th style="padding: 8px; border: 1px solid #e0e0e0;"></th>
-                        <th style="padding: 8px; border: 1px solid #e0e0e0;"></th>
-                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Functional Jira</th>
-                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Security Jira</th>
-                        <th style="padding: 8px; border: 1px solid #e0e0e0;"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr style="background: #fafafa;">
-                        <td style="padding: 8px; border: 1px solid #e0e0e0;">${engagement.name}</td>
-                        <td style="padding: 8px; border: 1px solid #e0e0e0;">${today}</td>
-                        <td style="padding: 8px; border: 1px solid #e0e0e0;">${functionalJiras}</td>
-                        <td style="padding: 8px; border: 1px solid #e0e0e0;">${securityJiras}</td>
-                        <td style="padding: 8px; border: 1px solid #e0e0e0;" class="contrast-verification-static">${reportingTest.commit_hash || "No"}</td>
-                    </tr>
-                </tbody>
-            </table>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 20px; border: 2px solid #007bff;">
-                <thead>
-                    <tr style="background: var(--bs-gray-200);">
-                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Description</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr style="background: #fafafa;">
-                        <td style="padding: 8px; border: 1px solid #e0e0e0;">
-                            <textarea class="form-control engagement-description-textarea" data-id="${reportingTest.id}" style="width: 20cm; height: 10cm; text-align: justify; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;">${reportingTest.description || ''}</textarea>
-                            <button class="btn btn-primary mt-2 save-description-btn" data-id="${reportingTest.id}">Save</button>
-                            <div class="description-static" style="display: none; text-align: justify; width: 20cm; min-height: 10cm; padding: 8px; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;">${reportingTest.description || ''}</div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    `;
-
-    // Section 2: Build
-    let buildOverviewContent = `
-        <h3 style="color: var(--bs-blue); margin-top: 20px; text-align: center;">Build</h3>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 2px solid #007bff;">
-            <thead>
-                <tr style="background: var(--bs-gray-200);">
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Build</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Date</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Total No. of Jiras</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr style="background: #fafafa;">
-                    <td style="padding: 8px; border: 1px solid #e0e0e0;">${engagement.name}</td>
-                    <td style="padding: 8px; border: 1px solid #e0e0e0;">${today}</td>
-                    <td style="padding: 8px; border: 1px solid #e0e0e0;">${testCases.length}</td>
-                </tr>
-            </tbody>
-        </table>
-    `;
-
-    let buildDetailsContent = `
-        <table style="width: 100%; border-collapse: collapse; margin-top: 20px; border: 2px solid #007bff; page-break-inside: auto;">
-            <thead>
-                <tr style="background: var(--bs-gray-200);">
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Changelog Reviewers</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Issue Key</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Test Approach</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Manual Secure Code Review</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Manual Security Testing</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Remark/Comment</th>
-                    <th style="padding: 8px; border: 1px solid #e0e0e0;">Why Manual Testing is Not Required?</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-    testCases.forEach(tc => {
-        const lead = usersList.find(user => user.id == tc.lead);
-        const reviewer = lead ? `${lead.first_name} ${lead.last_name}` : 'Unassigned';
-        const testApproach = tc.issue_type && tc.issue_type.toLowerCase().includes("security") ? "Security Jira" : "Functional Jira";
-        const descriptionLower = tc.description ? tc.description.toLowerCase() : "";
-        const secureCodeReview = descriptionLower.includes("secure code review: done") ? "Done" : 
-                                 (descriptionLower.includes("secure code review: na") ? "NA" : "Not Done");
-        const manualSecurityTesting = descriptionLower.includes("manual security code testing: done") ? "Done" : 
-                                      (descriptionLower.includes("manual security code testing: na") ? "NA" : "Not Done");
-
-        buildDetailsContent += `
-            <tr style="background: #fafafa;" data-id="${tc.id}">
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${reviewer}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${tc.id}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${testApproach}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${secureCodeReview}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${manualSecurityTesting}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0; max-width: 5cm; word-wrap: break-word; overflow-wrap: break-word; white-space: normal; text-align: justify;">${tc.description || 'N/A'}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;" class="manual-testing-static">${tc.build_id || ''}</td>
-            </tr>
-        `;
-    });
-    buildDetailsContent += `</tbody></table>`;
-    const buildContent = `<div class="build-section" style="page-break-before: always;">${buildOverviewContent}${buildDetailsContent}</div>`;
-
-    // Section 3: Security Analysis
-    const securityResponse = await fetch(`${BASE_URL}/tests/?engagement=${engagementId}&tags=risk_register`);
-    const securityData = await securityResponse.json();
-    const securityTests = securityData.results || [];
-
-    let securityAnalysisContent = `
-        <div class="security-analysis-section" style="page-break-before: always;">
-            <h3 style="color: var(--bs-blue); margin-top: 20px; text-align: center;">Security Analysis</h3>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; border: 2px solid #007bff; page-break-inside: auto;">
-                <thead>
-                    <tr style="background: var(--bs-gray-200);">
-                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Sr. No.</th>
-                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Category</th>
-                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Status</th>
-                        <th style="padding: 8px; border: 1px solid #e0e0e0;">Comment</th>
-                    </tr>
-                </thead>
-                <tbody id="securityAnalysisTableBody">
-    `;
-    securityTests.forEach((test, index) => {
-        const statusOptions = ["NA", "Found by code review", "Found by Manual Testing", "Not found"];
-        const selectedStatus = test.commit_hash || "NA";
-        securityAnalysisContent += `
-            <tr style="background: #fafafa;" data-id="${test.id}">
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${index + 1}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;">${test.title || 'N/A'}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;" class="security-status-static">${selectedStatus}</td>
-                <td style="padding: 8px; border: 1px solid #e0e0e0;" class="security-comment-static">${test.branch_tag || ''}</td>
-            </tr>
-        `;
-    });
-    securityAnalysisContent += `</tbody></table></div>`;
-
-    // Combine sections with Print button
-    const reportContent = `
-        <div class="report-container" style="padding: 20px; background: #fff; border: 3px solid #007bff; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-            ${summaryContent}${securityAnalysisContent}${buildContent}
-            <button class="btn btn-success mt-3 print-report-btn" onclick="printReport()">Print Report</button>
-        </div>
-        <style>
-            @media print {
-                .report-container { 
-                    padding: 0; 
-                    border: none; 
-                    box-shadow: none; 
-                    background: none; 
-                }
-                .summary-section { 
-                    padding: 10mm; 
-                    border: 2px solid #007bff; 
-                    margin-bottom: 0; 
-                }
-                .security-analysis-section, .build-section { 
-                    padding: 10mm; 
-                    border: 2px solid #007bff; 
-                }
-                table { 
-                    width: 100%; 
-                    page-break-inside: auto; 
-                    border-collapse: collapse; 
-                }
-                tr { 
-                    page-break-inside: avoid; 
-                    page-break-after: auto; 
-                }
-                th, td { 
-                    font-size: 12pt; 
-                    border: 1px solid #e0e0e0; 
-                    padding: 8px; 
-                }
-                h3 { 
-                    color: #007bff; 
-                    font-size: 16pt; 
-                    font-weight: bold; 
-                }
-                .btn, .form-select, .form-control { 
-                    display: none; 
-                }
-                .contrast-verification-static, .manual-testing-static, .security-status-static, .security-comment-static { 
-                    display: block; 
-                }
-                .description-static { 
-                    display: block; 
-                    border: 1px solid #e0e0e0; 
-                    padding: 8px; 
-                }
-                .engagement-description-textarea { 
-                    display: none !important; 
-                }
-                @page { 
-                    margin: 10mm; 
-                }
-            }
-        </style>
-    `;
-    document.getElementById("reportContent").innerHTML = reportContent;
-
-    // Event listeners for Section 1 (Contrast Verification and Description)
-    const contrastDropdown = document.querySelector('.contrast-verification-dropdown');
-    if (contrastDropdown) {
-        contrastDropdown.addEventListener('change', async () => {
-            const testId = contrastDropdown.dataset.id;
-            const newValue = contrastDropdown.value;
-            await updateReportingTest(testId, { commit_hash: newValue }, reportingTest, engagement.name);
-            showAlert("Contrast Verification Saved", "success", engagement.name);
-            document.querySelector('.contrast-verification-static').textContent = newValue;
-        });
-    }
-
-    const saveButton = document.querySelector('.save-description-btn');
-    const textarea = document.querySelector('.engagement-description-textarea');
-    if (saveButton && textarea) {
-        saveButton.addEventListener('click', async () => {
-            const testId = saveButton.dataset.id;
-            const newDescription = textarea.value;
-            await updateReportingTest(testId, { description: newDescription }, reportingTest, engagement.name);
-            showAlert("Description Saved", "success", engagement.name);
-            document.querySelector('.description-static').textContent = newDescription;
-        });
-    }
-
-    // Event listeners for Section 2
-    document.querySelectorAll('.manual-testing-reason').forEach(input => {
-        input.addEventListener('blur', async () => {
-            const testId = input.dataset.id;
-            const newReason = input.value;
-            await updateSecurityTest(testId, { build_id: newReason }, engagement.name);
-            showAlert("Manual Testing Reason Saved", "success", engagement.name);
-            input.nextElementSibling.textContent = newReason; // Update static content if needed
-        });
-    });
-
-    // Event listeners for Section 3
-    document.querySelectorAll('.security-status-dropdown').forEach(dropdown => {
-        dropdown.addEventListener('change', async () => {
-            const testId = dropdown.dataset.id;
-            const newStatus = dropdown.value;
-            await updateSecurityTest(testId, { commit_hash: newStatus }, engagement.name);
-            showAlert("Status Saved", "success", engagement.name);
-            dropdown.nextElementSibling.textContent = newStatus; // Update static content if needed
-        });
-    });
-
-    document.querySelectorAll('.security-comment-input').forEach(input => {
-        input.addEventListener('blur', async () => {
-            const testId = input.dataset.id;
-            const newComment = input.value;
-            await updateSecurityTest(testId, { branch_tag: newComment }, engagement.name);
-            showAlert("Comment Saved", "success", engagement.name);
-            input.nextElementSibling.textContent = newComment; // Update static content if needed
-        });
-    });
-}
-
-// SuperGrok Edition: Updated PUT request for reporting test
-async function updateReportingTest(testId, updates, testData, engagementName) {
-    try {
-        const csrfToken = await fetchCsrfToken();
-        if (!csrfToken) throw new Error("[SuperGrok] CSRF token not retrieved");
-
-        const today = new Date().toISOString().split('T')[0];
-
-        const payload = {
-            id: testData.id,
-            title: testData.title || "Reporting Test",
-            engagement: testData.engagement || testData.engagement_id,
-            target_start: testData.target_start || today,
-            target_end: testData.target_end || today,
-            lead: testData.lead || 2,
-            test_type: testData.test_type || 207,
-            description: testData.description || "",
-            commit_hash: testData.commit_hash || "No",
-            ...updates
-        };
-
-        const response = await fetch(`${BASE_URL}/tests/${testId}/`, {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": csrfToken
-            },
-            body: JSON.stringify(payload),
-            credentials: "include"
-        });
-
-        if (response.ok) {
-            console.log(`[SuperGrok] Updated reporting test ${testId} with ${JSON.stringify(payload)}`);
-            Object.assign(testData, updates);
-        } else {
-            const errorText = await response.text();
-            console.error(`[SuperGrok] Failed to update test ${testId}: ${errorText}`);
-            showAlert(`Failed to update test: ${response.statusText}`, "danger");
-        }
-    } catch (error) {
-        console.error("[SuperGrok] Error updating reporting test:", error);
-        showAlert("Error updating test: " + error.message, "danger");
-    }
-}
-
-// Function to update security test via PATCH
-async function updateSecurityTest(testId, payload, engagementName) {
-    try {
-        const csrfToken = await fetchCsrfToken();
-        if (!csrfToken) throw new Error("[SuperGrok] CSRF token not retrieved");
-
-        const response = await fetch(`${BASE_URL}/tests/${testId}/`, {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": csrfToken
-            },
-            body: JSON.stringify(payload),
-            credentials: "include"
-        });
-
-        if (response.ok) {
-            console.log(`[SuperGrok] Updated test ${testId} with ${JSON.stringify(payload)}`);
-        } else {
-            const errorText = await response.text();
-            console.error(`[SuperGrok] Failed to update test ${testId}: ${errorText}`);
-            showAlert(`Failed to update test: ${response.statusText}`, "danger");
-        }
-    } catch (error) {
-        console.error("[SuperGrok] Error updating test:", error);
-        showAlert("Error updating test: " + error.message, "danger");
-    }
-}
-
-// Function to print the report
 function printReport() {
+    // Store original content to restore later
+    const originalContent = document.getElementById("reportContent").innerHTML;
+
+    // Extract sections from the current report content
+    const reportContainer = document.querySelector('.report-container');
+    const summarySection = reportContainer.querySelector('h3:first-child').outerHTML + 
+                           reportContainer.querySelector('table:first-child').outerHTML + 
+                           reportContainer.querySelector('table:nth-child(2)').outerHTML;
+    const buildSection = reportContainer.querySelector('h3:nth-child(2)').outerHTML + 
+                         reportContainer.querySelector('table:nth-child(3)').outerHTML + 
+                         reportContainer.querySelector('table:nth-child(4)').outerHTML;
+    const securitySection = reportContainer.querySelector('h3:last-child').outerHTML + 
+                            reportContainer.querySelector('table:last-child').outerHTML;
+
+    // Create print-specific HTML with page breaks and styling
+    const printHtml = `
+        <div class="print-report-container">
+            <!-- Page 1: Summary -->
+            <div class="print-page summary-page" style="page-break-after: always;">
+                <h1 style="text-align: center; color: #007bff; font-size: 24pt; margin-bottom: 20px;">Engagement Summary Report</h1>
+                ${summarySection}
+            </div>
+
+            <!-- Page 2: Security Analysis -->
+            <div class="print-page security-page" style="page-break-before: always; page-break-after: always;">
+                ${securitySection}
+            </div>
+
+            <!-- Page 3+: Build -->
+            <div class="print-page build-page" style="page-break-before: always;">
+                ${buildSection}
+            </div>
+
+            <style>
+                @media print {
+                    .print-report-container {
+                        width: 100%;
+                        margin: 0;
+                        padding: 0;
+                    }
+                    .print-page {
+                        width: 100%;
+                        padding: 10mm;
+                        box-sizing: border-box;
+                    }
+                    .summary-page table {
+                        width: 100%;
+                        border: 2px solid #007bff;
+                        border-collapse: collapse;
+                        margin-top: 10px;
+                        background: #fafafa;
+                        font-size: 12pt;
+                    }
+                    .summary-page th, .summary-page td {
+                        padding: 8px;
+                        border: 1px solid #e0e0e0;
+                        text-align: left;
+                    }
+                    .summary-page h3 {
+                        color: #007bff;
+                        font-size: 16pt;
+                        margin-top: 0;
+                    }
+                    .security-page table, .build-page table {
+                        width: 100%;
+                        border: 2px solid #007bff;
+                        border-collapse: collapse;
+                        margin-top: 10px;
+                        background: #fafafa;
+                        font-size: 12pt;
+                        page-break-inside: auto;
+                    }
+                    .security-page th, .security-page td, .build-page th, .build-page td {
+                        padding: 8px;
+                        border: 1px solid #e0e0e0;
+                        text-align: left;
+                        page-break-inside: avoid;
+                    }
+                    .security-page tr, .build-page tr {
+                        page-break-inside: avoid;
+                        page-break-after: auto;
+                    }
+                    .security-page h3, .build-page h3 {
+                        color: #007bff;
+                        font-size: 16pt;
+                        margin-top: 0;
+                        page-break-before: avoid;
+                    }
+                    .btn, .form-select, .form-control {
+                        display: none; /* Hide buttons, dropdowns, and inputs */
+                    }
+                    @page {
+                        margin: 10mm; /* Consistent margins for all pages */
+                    }
+                }
+            </style>
+        </div>
+    `;
+
+    // Temporarily replace report content with print layout
+    document.getElementById("reportContent").innerHTML = printHtml;
+
+    // Trigger print
     window.print();
+
+    // Restore original content after printing
+    setTimeout(() => {
+        document.getElementById("reportContent").innerHTML = originalContent;
+    }, 100); // Delay to ensure print dialog opens first
 }
