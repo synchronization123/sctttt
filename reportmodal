@@ -32,21 +32,72 @@ function printReport() {
         return;
     }
 
-    // Extract sections explicitly
-    const summarySection = `
-        ${headers[0].outerHTML}
-        ${tables[0].outerHTML}
-        ${tables[1].outerHTML}
-    `;
-    const buildSection = `
-        ${headers[1].outerHTML}
-        ${tables[2].outerHTML}
-        ${tables[3].outerHTML}
-    `;
-    const securitySection = `
-        ${headers[2].outerHTML}
-        ${tables[4].outerHTML}
-    `;
+    // Extract and modify sections with current values
+    // Summary Section
+    const summaryHeader = headers[0].outerHTML;
+    let summaryTable1 = tables[0].outerHTML;
+    let summaryTable2 = tables[1].outerHTML;
+
+    // Get current commit_hash (reason) from dropdown
+    const contrastDropdown = reportContainer.querySelector('.contrast-verification-dropdown');
+    const currentCommitHash = contrastDropdown ? contrastDropdown.value : 'No'; // Default to 'No' if not found
+    summaryTable1 = summaryTable1.replace(
+        /<select class="form-select contrast-verification-dropdown"[^>]*>.*?<\/select>/,
+        `<span>${currentCommitHash}</span>`
+    );
+
+    // Get current description from textarea
+    const descriptionTextarea = reportContainer.querySelector('.engagement-description-textarea');
+    const currentDescription = descriptionTextarea ? descriptionTextarea.value : ''; // Default to empty if not found
+    summaryTable2 = summaryTable2.replace(
+        /<textarea class="form-control engagement-description-textarea"[^>]*>.*?<\/textarea>.*?<button[^>]*>.*?<\/button>/,
+        `<div style="text-align: justify; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;">${currentDescription || 'N/A'}</div>`
+    );
+
+    const summarySection = `${summaryHeader}${summaryTable1}${summaryTable2}`;
+
+    // Build Section (no changes needed as it’s static except for manual-testing-reason, which we’ll handle)
+    const buildHeader = headers[1].outerHTML;
+    let buildTable1 = tables[2].outerHTML;
+    let buildTable2 = tables[3].outerHTML;
+
+    // Replace manual-testing-reason inputs with current values
+    const manualInputs = reportContainer.querySelectorAll('.manual-testing-reason');
+    manualInputs.forEach((input, index) => {
+        const currentValue = input.value || 'N/A';
+        buildTable2 = buildTable2.replace(
+            new RegExp(`<input[^>]*class="form-control manual-testing-reason"[^>]*value="${input.value || ''}"[^>]*>`),
+            `<span>${currentValue}</span>`
+        );
+    });
+
+    const buildSection = `${buildHeader}${buildTable1}${buildTable2}`;
+
+    // Security Analysis Section
+    const securityHeader = headers[2].outerHTML;
+    let securityTable = tables[4].outerHTML;
+
+    // Replace Status dropdowns and Comment inputs with current values
+    const statusDropdowns = reportContainer.querySelectorAll('.security-status-dropdown');
+    const commentInputs = reportContainer.querySelectorAll('.security-comment-input');
+    
+    statusDropdowns.forEach((dropdown, index) => {
+        const currentStatus = dropdown.value || 'NA';
+        securityTable = securityTable.replace(
+            new RegExp(`<select[^>]*class="form-select security-status-dropdown"[^>]*data-id="${dropdown.dataset.id}"[^>]*>.*?</select>`),
+            `<span>${currentStatus}</span>`
+        );
+    });
+
+    commentInputs.forEach((input, index) => {
+        const currentComment = input.value || '';
+        securityTable = securityTable.replace(
+            new RegExp(`<input[^>]*class="form-control security-comment-input"[^>]*data-id="${input.dataset.id}"[^>]*value="${input.value || ''}"[^>]*>`),
+            `<span>${currentComment || 'N/A'}</span>`
+        );
+    });
+
+    const securitySection = `${securityHeader}${securityTable}`;
 
     // Create full HTML document with styling
     const reportHtml = `
