@@ -59,7 +59,7 @@ async function generateReport() {
         });
         if (!response.ok) throw new Error("Failed to fetch reporting test data");
         const data = await response.json();
-        reportingTest = data.results && data.results.length > 0 ? data.results[0] : null; // Take first test with 'reporting' tag
+        reportingTest = data.results && data.results.length > 0 ? data.results[0] : null;
         if (!reportingTest) throw new Error("No test found with tag 'reporting'");
     } catch (error) {
         console.error("[SuperGrok] Error fetching reporting test:", error);
@@ -75,7 +75,7 @@ async function generateReport() {
     }
 
     const testCases = engagement.testCases;
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0]; // e.g., "2025-03-26"
     const functionalJiras = testCases.filter(tc => tc.commit_hash !== "Security").length;
     const securityJiras = testCases.filter(tc => tc.commit_hash === "Security").length;
 
@@ -303,17 +303,23 @@ async function generateReport() {
     });
 }
 
-// SuperGrok Edition: New PUT request for reporting test updates
+// SuperGrok Edition: Updated PUT request for reporting test
 async function updateReportingTest(testId, updates, testData, engagementName) {
     try {
         const csrfToken = await fetchCsrfToken();
         if (!csrfToken) throw new Error("[SuperGrok] CSRF token not retrieved");
+
+        const today = new Date().toISOString().split('T')[0]; // Current date, e.g., "2025-03-26"
 
         // Construct payload with mandatory fields and updates
         const payload = {
             id: testData.id,
             title: testData.title || "Reporting Test", // Fallback if null
             engagement: testData.engagement || testData.engagement_id, // Adjust based on API structure
+            target_start: testData.target_start || today, // Use today if not set
+            target_end: testData.target_end || today, // Use today if not set
+            lead: testData.lead || 2, // Default to 2 as specified
+            test_type: testData.test_type || 207, // Default to 207 as specified
             description: testData.description || "", // Default from existing data
             commit_hash: testData.commit_hash || "No", // Default from existing data
             ...updates // Override with new values (commit_hash or description)
