@@ -1,222 +1,146 @@
-function printReport() {
-    // Get the report container
-    const reportContent = document.getElementById("reportContent");
-    if (!reportContent) {
-        console.error("[SuperGrok] Error: reportContent element not found");
-        alert("Unable to generate report: Content container missing.");
-        return;
-    }
-
-    const reportContainer = reportContent.querySelector('.report-container');
-    if (!reportContainer) {
-        console.error("[SuperGrok] Error: .report-container not found in reportContent");
-        alert("Unable to generate report: Report container missing.");
-        return;
-    }
-
-    // Debug: Log the container’s structure
-    console.log("[SuperGrok] Report container content:", reportContainer.innerHTML);
-
-    // Fetch all h3 and table elements
-    const headers = reportContainer.querySelectorAll('h3');
-    const tables = reportContainer.querySelectorAll('table');
-
-    // Validate structure: Expecting 3 headers and 5 tables
-    if (headers.length < 3 || tables.length < 5) {
-        console.error("[SuperGrok] Error: Incomplete report structure", {
-            headersFound: headers.length,
-            tablesFound: tables.length,
-            expected: "3 headers, 5 tables"
-        });
-        alert("Unable to generate report: Incomplete structure. Expected 3 sections with 5 tables.");
-        return;
-    }
-
-    // Extract and modify sections with current values
-    // Summary Section
-    const summaryHeader = headers[0].outerHTML;
-    let summaryTable1 = tables[0].outerHTML;
-    let summaryTable2 = tables[1].outerHTML;
-
-    // Get current commit_hash (Contrast Verification) from dropdown
-    const contrastDropdown = reportContainer.querySelector('.contrast-verification-dropdown');
-    const currentCommitHash = contrastDropdown ? contrastDropdown.value : 'No'; // Default to 'No'
-    console.log("[SuperGrok] Contrast Verification (commit_hash):", currentCommitHash);
-    summaryTable1 = summaryTable1.replace(
-        /<select[^>]*class="[^"]*contrast-verification-dropdown[^"]*"[^>]*>[\s\S]*?<\/select>/i,
-        `<span>${currentCommitHash}</span>`
-    );
-
-    // Get current description from textarea
-    const descriptionTextarea = reportContainer.querySelector('.engagement-description-textarea');
-    const currentDescription = descriptionTextarea ? descriptionTextarea.value : ''; // Default to empty
-    console.log("[SuperGrok] Description:", currentDescription);
-    summaryTable2 = summaryTable2.replace(
-        /<textarea[^>]*class="[^"]*engagement-description-textarea[^"]*"[^>]*>[\s\S]*?<\/textarea>\s*<button[^>]*>[\s\S]*?<\/button>/i,
-        `<div style="text-align: justify; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;">${currentDescription || 'N/A'}</div>`
-    );
-
-    const summarySection = `${summaryHeader}${summaryTable1}${summaryTable2}`;
-
-    // Build Section
-    const buildHeader = headers[1].outerHTML;
-    let buildTable1 = tables[2].outerHTML;
-    let buildTable2 = tables[3].outerHTML;
-
-    // Replace manual-testing-reason inputs with current values
-    const manualInputs = reportContainer.querySelectorAll('.manual-testing-reason');
-    manualInputs.forEach((input) => {
-        const currentValue = input.value || 'N/A';
-        buildTable2 = buildTable2.replace(
-            new RegExp(`<input[^>]*class="[^"]*manual-testing-reason[^"]*"[^>]*data-id="${input.dataset.id}"[^>]*value="[^"]*"[^>]*>`, 'i'),
-            `<span>${currentValue}</span>`
-        );
-    });
-
-    const buildSection = `${buildHeader}${buildTable1}${buildTable2}`;
-
-    // Security Analysis Section
-    const securityHeader = headers[2].outerHTML;
-    let securityTable = tables[4].outerHTML;
-
-    // Replace Status (commit_hash) dropdowns with current values
-    const statusDropdowns = reportContainer.querySelectorAll('.security-status-dropdown');
-    console.log("[SuperGrok] Found", statusDropdowns.length, "security-status-dropdown elements");
-    statusDropdowns.forEach((dropdown, index) => {
-        const currentStatus = dropdown.value || 'NA';
-        console.log(`[SuperGrok] Security Analysis Status (commit_hash) #${index + 1} (data-id=${dropdown.dataset.id}):`, currentStatus);
-        const dropdownHtml = dropdown.outerHTML.replace(/[.+*?^$()[\]{}\\|]/g, '\\$&'); // Escape special regex chars
-        const regex = new RegExp(dropdownHtml, 'i');
-        securityTable = securityTable.replace(regex, `<span>${currentStatus}</span>`);
-    });
-
-    // Replace Comment inputs with current values
-    const commentInputs = reportContainer.querySelectorAll('.security-comment-input');
-    commentInputs.forEach((input) => {
-        const currentComment = input.value || '';
-        console.log("[SuperGrok] Security Analysis Comment (branch_tag) for data-id=" + input.dataset.id + ":", currentComment);
-        securityTable = securityTable.replace(
-            new RegExp(`<input[^>]*class="[^"]*security-comment-input[^"]*"[^>]*data-id="${input.dataset.id}"[^>]*value="[^"]*"[^>]*>`, 'i'),
-            `<span>${currentComment || 'N/A'}</span>`
-        );
-    });
-
-    const securitySection = `${securityHeader}${securityTable}`;
-
-    // Debug: Log modified sections
-    console.log("[SuperGrok] Modified Summary Section:", summarySection);
-    console.log("[SuperGrok] Modified Security Section:", securitySection);
-
-    // Create full HTML document with styling
-    const reportHtml = `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Engagement Report</title>
-            <style>
+const reportHtml = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Engagement Report - ${engagementName}</title>
+        <style>
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                margin: 0;
+                padding: 0;
+                background-color: #f8f9fa;
+                color: #212529;
+            }
+            .report-container {
+                max-width: 1200px;
+                margin: 20px auto;
+                padding: 20px;
+                background: #ffffff;
+                border-radius: 8px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            h1 {
+                color: #007bff;
+                font-size: 2.5rem;
+                text-align: center;
+                margin-bottom: 30px;
+                font-weight: 600;
+            }
+            h3 {
+                color: #0056b3;
+                font-size: 1.75rem;
+                margin-top: 40px;
+                margin-bottom: 20px;
+                border-bottom: 2px solid #007bff;
+                padding-bottom: 5px;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 20px;
+                background: #fff;
+                border: 1px solid #dee2e6;
+            }
+            th, td {
+                padding: 12px 15px;
+                text-align: left;
+                border: 1px solid #dee2e6;
+                font-size: 1rem;
+            }
+            th {
+                background-color: #007bff;
+                color: #fff;
+                font-weight: 500;
+            }
+            tr:nth-child(even) {
+                background-color: #f2f2f2;
+            }
+            tr:hover {
+                background-color: #e9ecef;
+            }
+            .btn, .form-select, .form-control {
+                display: none;
+            }
+            .print-btn {
+                display: block;
+                margin: 20px auto;
+                padding: 10px 20px;
+                font-size: 1.1rem;
+                color: #fff;
+                background-color: #28a745;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                transition: background-color 0.3s;
+            }
+            .print-btn:hover {
+                background-color: #218838;
+            }
+            @media print {
                 body {
-                    font-family: Arial, sans-serif;
-                    margin: 0;
-                    padding: 0;
-                    width: 100%;
+                    background-color: #fff;
                 }
                 .report-container {
-                    width: 100%;
-                    padding: 20mm;
-                    box-sizing: border-box;
+                    margin: 0;
+                    padding: 10mm;
+                    box-shadow: none;
+                    border: none;
                 }
-                h1 {
-                    text-align: center;
-                    color: #007bff;
-                    font-size: 24pt;
-                    margin-bottom: 20px;
+                .summary-section {
+                    page-break-after: always;
                 }
-                h3 {
-                    color: #007bff;
-                    font-size: 16pt;
-                    margin-top: 20px;
+                .security-section {
+                    page-break-before: always;
+                    page-break-after: always;
+                }
+                .build-section {
+                    page-break-before: always;
                 }
                 table {
-                    width: 100%;
-                    border: 2px solid #007bff;
-                    border-collapse: collapse;
-                    margin-top: 10px;
-                    background: #fafafa;
-                    font-size: 12pt;
+                    page-break-inside: auto;
                 }
-                th, td {
-                    padding: 8px;
-                    border: 1px solid #e0e0e0;
-                    text-align: left;
+                tr {
+                    page-break-inside: avoid;
+                    page-break-after: auto;
                 }
-                .btn, .form-select, .form-control {
-                    display: none; /* Hide buttons, dropdowns, and inputs */
+                h3 {
+                    page-break-before: avoid;
                 }
-                @media print {
-                    .report-container {
-                        padding: 10mm;
-                    }
-                    .summary-section {
-                        page-break-after: always;
-                    }
-                    .security-section {
-                        page-break-before: always;
-                        page-break-after: always;
-                    }
-                    .build-section {
-                        page-break-before: always;
-                    }
-                    table {
-                        page-break-inside: auto;
-                    }
-                    tr {
-                        page-break-inside: avoid;
-                        page-break-after: auto;
-                    }
-                    h3 {
-                        page-break-before: avoid;
-                    }
-                    @page {
-                        margin: 10mm;
-                    }
+                @page {
+                    margin: 10mm;
                 }
-            </style>
-        </head>
-        <body>
-            <div class="report-container">
-                <!-- Summary Section -->
-                <div class="summary-section">
-                    <h1>Engagement Summary Report</h1>
-                    ${summarySection}
-                </div>
-
-                <!-- Security Analysis Section -->
-                <div class="security-section">
-                    ${securitySection}
-                </div>
-
-                <!-- Build Section -->
-                <div class="build-section">
-                    ${buildSection}
-                </div>
+                .print-btn {
+                    display: none;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="report-container">
+            <!-- Summary Section -->
+            <div class="summary-section">
+                <h1>Engagement Summary Report</h1>
+                ${summarySection}
             </div>
-        </body>
-        </html>
-    `;
 
-    // Open the report in a new tab
-    const newTab = window.open('', '_blank');
-    if (!newTab) {
-        console.error("[SuperGrok] Error: Failed to open new tab (popup blocked?)");
-        alert("Unable to open report: Please allow popups for this site.");
-        return;
-    }
+            <!-- Security Analysis Section -->
+            <div class="security-section">
+                ${securitySection}
+            </div>
 
-    newTab.document.write(reportHtml);
-    newTab.document.close();
+            <!-- Build Section -->
+            <div class="build-section">
+                ${buildSection}
+            </div>
 
-    // Optional: Focus the new tab
-    newTab.focus();
-}
+            <button class="print-btn" onclick="window.print()">Print to PDF</button>
+        </div>
+        <script>
+            // Set document title for PDF filename
+            document.title = '${engagementName.replace(/[^a-zA-Z0-9]/g, '_')}_Report';
+        </script>
+    </body>
+    </html>
+`;
