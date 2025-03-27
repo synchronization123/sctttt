@@ -32,3 +32,22 @@ if response.status_code == 200:
         pass
 else:
     print(f"Failed to fetch data from API. Status code: {response.status_code}")
+
+
+----------
+optimized script
+
+import requests
+import subprocess
+
+URL = "https://demo.defectdojo.org/api/v2/engagements/10"
+headers = {"Authorization": f"Token jhgbmkggjhk"}
+
+response = requests.get(URL, headers=headers)
+if response.status_code == 200 and response.json().get('commit_hash') == '0':
+    subprocess.run(["python3", "/path/to/Main.py"])
+    update_response = requests.patch(URL, json={"commit_hash": "4"}, headers=headers)
+    if update_response.status_code != 200:
+        print(f"Failed to update commit_hash to '4'. Status: {update_response.status_code}")
+elif response.status_code != 200:
+    print(f"Failed to fetch data from API. Status: {response.status_code}")
