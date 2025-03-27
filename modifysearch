@@ -1,96 +1,131 @@
-<div class="searchable-select-wrapper">
-  <select id="jiraAssignedFilterOpen" class="form-select" onchange="renderTableOpen(currentPageOpen)">
-    <option value="">Filter by Jira(s) assigned</option>
-    <!-- Add your existing options here -->
-  </select>
+<div class="custom-dropdown">
+  <div class="dropdown-selected" onclick="toggleDropdown(this)">
+    Filter by Jira(s) assigned
+  </div>
+  <div class="dropdown-content">
+    <input type="text" class="search-input" placeholder="Search..." oninput="filterDropdown(this)">
+    <select id="jiraAssignedFilterOpen" onchange="renderTableOpen(currentPageOpen)">
+      <option value="">Select an option</option>
+      <!-- Add your options here -->
+      <option value="user1">John Doe</option>
+      <option value="user2">Jane Smith</option>
+      <option value="user3">Bob Johnson</option>
+    </select>
+  </div>
 </div>
 
 <style>
-.searchable-select-wrapper {
+.custom-dropdown {
   position: relative;
   width: 300px; /* Adjust as needed */
   margin: 20px 0;
+  font-family: Arial, sans-serif;
 }
 
-.form-select {
-  width: 100%;
-  padding: 10px;
+.dropdown-selected {
+  padding: 12px 15px;
   border: 2px solid #e0e0e0;
   border-radius: 8px;
-  font-size: 16px;
   background: #fff;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  position: relative;
   cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
 }
 
-.form-select:focus {
+.dropdown-selected:hover {
   border-color: #007bff;
-  outline: none;
-  box-shadow: 0 2px 10px rgba(0,123,255,0.2);
 }
 
-/* Style for the search input we'll add via JS */
-.searchable-select-wrapper .search-input {
-  width: calc(100% - 24px);
+.dropdown-content {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 2px solid #e0e0e0;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  z-index: 1000;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.dropdown-content.show {
+  display: block;
+}
+
+.search-input {
+  width: calc(100% - 20px);
+  margin: 10px;
   padding: 8px;
-  margin: 5px 10px;
   border: 1px solid #e0e0e0;
   border-radius: 4px;
   font-size: 14px;
   position: sticky;
   top: 0;
   background: #fff;
-  z-index: 1;
 }
 
-.form-select option {
-  padding: 8px 15px;
+.custom-dropdown select {
+  width: 100%;
+  border: none;
+  padding: 5px 0;
+  margin: 0;
+  background: transparent;
+  outline: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.custom-dropdown option {
+  padding: 10px 15px;
   cursor: pointer;
   transition: background 0.2s ease;
 }
 
-.form-select option:hover {
+.custom-dropdown option:hover {
   background: #f0f7ff;
   color: #007bff;
 }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  const select = document.getElementById('jiraAssignedFilterOpen');
-  const wrapper = document.querySelector('.searchable-select-wrapper');
+function toggleDropdown(element) {
+  const content = element.nextElementSibling;
+  content.classList.toggle('show');
+}
+
+function filterDropdown(input) {
+  const filter = input.value.toLowerCase();
+  const select = input.nextElementSibling;
+  const options = select.getElementsByTagName('option');
   
-  // Create search input
-  const searchInput = document.createElement('input');
-  searchInput.type = 'text';
-  searchInput.className = 'search-input';
-  searchInput.placeholder = 'Search...';
-  
-  // Insert search input at the top of the select
-  select.insertAdjacentElement('afterbegin', searchInput);
-  
-  // Add event listener for filtering
-  searchInput.addEventListener('input', function(e) {
-    const filter = e.target.value.toLowerCase();
-    const options = select.getElementsByTagName('option');
-    
-    for (let i = 0; i < options.length; i++) {
-      const text = options[i].textContent || options[i].innerText;
-      if (text.toLowerCase().indexOf(filter) > -1) {
-        options[i].style.display = '';
-      } else {
-        options[i].style.display = 'none';
-      }
+  for (let option of options) {
+    const text = option.textContent.toLowerCase();
+    if (text.includes(filter)) {
+      option.style.display = '';
+    } else {
+      option.style.display = 'none';
+    }
+  }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  const dropdowns = document.querySelectorAll('.custom-dropdown');
+  dropdowns.forEach(dropdown => {
+    if (!dropdown.contains(e.target)) {
+      dropdown.querySelector('.dropdown-content').classList.remove('show');
     }
   });
-  
-  // Prevent select from closing when clicking search input
-  searchInput.addEventListener('click', (e) => {
-    e.stopPropagation();
-  });
-  
-  // Make select tall enough to show options
-  select.size = 10; // Adjust this number based on how many options you want visible
+});
+
+// Update selected text when option is chosen
+document.getElementById('jiraAssignedFilterOpen').addEventListener('change', function(e) {
+  const selectedText = this.options[this.selectedIndex].text;
+  this.closest('.custom-dropdown').querySelector('.dropdown-selected').textContent = selectedText;
 });
 </script>
