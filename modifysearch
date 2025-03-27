@@ -1,5 +1,4 @@
-<div class="searchable-select-container">
-  <input type="text" class="search-input" placeholder="Search Jira assigned..." onkeyup="filterOptions(this)">
+<div class="searchable-select-wrapper">
   <select id="jiraAssignedFilterOpen" class="form-select" onchange="renderTableOpen(currentPageOpen)">
     <option value="">Filter by Jira(s) assigned</option>
     <!-- Add your existing options here -->
@@ -7,50 +6,42 @@
 </div>
 
 <style>
-.searchable-select-container {
+.searchable-select-wrapper {
   position: relative;
   width: 300px; /* Adjust as needed */
   margin: 20px 0;
 }
 
-.search-input {
+.form-select {
   width: 100%;
-  padding: 12px 15px;
+  padding: 10px;
   border: 2px solid #e0e0e0;
   border-radius: 8px;
   font-size: 16px;
-  outline: none;
-  transition: all 0.3s ease;
   background: #fff;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.search-input:focus {
-  border-color: #007bff;
-  box-shadow: 0 2px 10px rgba(0,123,255,0.2);
-}
-
-.form-select {
-  width: 100%;
-  max-height: 200px;
-  padding: 10px;
-  border: 2px solid #e0e0e0;
-  border-radius: 0 0 8px 8px;
-  font-size: 16px;
-  appearance: none;
-  background: #fff;
-  position: absolute;
-  top: 100%;
-  left: 0;
-  overflow-y: auto;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-  border-top: none;
-  z-index: 1000;
+  position: relative;
+  cursor: pointer;
 }
 
 .form-select:focus {
   border-color: #007bff;
   outline: none;
+  box-shadow: 0 2px 10px rgba(0,123,255,0.2);
+}
+
+/* Style for the search input we'll add via JS */
+.searchable-select-wrapper .search-input {
+  width: calc(100% - 24px);
+  padding: 8px;
+  margin: 5px 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-size: 14px;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
 }
 
 .form-select option {
@@ -66,32 +57,40 @@
 </style>
 
 <script>
-function filterOptions(input) {
-  const filter = input.value.toLowerCase();
+document.addEventListener('DOMContentLoaded', () => {
   const select = document.getElementById('jiraAssignedFilterOpen');
-  const options = select.getElementsByTagName('option');
+  const wrapper = document.querySelector('.searchable-select-wrapper');
   
-  for (let i = 0; i < options.length; i++) {
-    const txtValue = options[i].textContent || options[i].innerText;
-    if (txtValue.toLowerCase().indexOf(filter) > -1) {
-      options[i].style.display = "";
-    } else {
-      options[i].style.display = "none";
+  // Create search input
+  const searchInput = document.createElement('input');
+  searchInput.type = 'text';
+  searchInput.className = 'search-input';
+  searchInput.placeholder = 'Search...';
+  
+  // Insert search input at the top of the select
+  select.insertAdjacentElement('afterbegin', searchInput);
+  
+  // Add event listener for filtering
+  searchInput.addEventListener('input', function(e) {
+    const filter = e.target.value.toLowerCase();
+    const options = select.getElementsByTagName('option');
+    
+    for (let i = 0; i < options.length; i++) {
+      const text = options[i].textContent || options[i].innerText;
+      if (text.toLowerCase().indexOf(filter) > -1) {
+        options[i].style.display = '';
+      } else {
+        options[i].style.display = 'none';
+      }
     }
-  }
-}
-
-// Show/hide select on input focus
-const input = document.querySelector('.search-input');
-const select = document.getElementById('jiraAssignedFilterOpen');
-
-input.addEventListener('focus', () => {
-  select.style.display = 'block';
-});
-
-document.addEventListener('click', (e) => {
-  if (!document.querySelector('.searchable-select-container').contains(e.target)) {
-    select.style.display = 'none';
-  }
+  });
+  
+  // Prevent select from closing when clicking search input
+  searchInput.addEventListener('click', (e) => {
+    e.stopPropagation();
+  });
+  
+  // Make select tall enough to show options
+  select.size = 10; // Adjust this number based on how many options you want visible
 });
 </script>
