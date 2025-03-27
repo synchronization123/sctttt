@@ -1,0 +1,97 @@
+<div class="searchable-select-container">
+  <input type="text" class="search-input" placeholder="Search Jira assigned..." onkeyup="filterOptions(this)">
+  <select id="jiraAssignedFilterOpen" class="form-select" onchange="renderTableOpen(currentPageOpen)">
+    <option value="">Filter by Jira(s) assigned</option>
+    <!-- Add your existing options here -->
+  </select>
+</div>
+
+<style>
+.searchable-select-container {
+  position: relative;
+  width: 300px; /* Adjust as needed */
+  margin: 20px 0;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 16px;
+  outline: none;
+  transition: all 0.3s ease;
+  background: #fff;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.search-input:focus {
+  border-color: #007bff;
+  box-shadow: 0 2px 10px rgba(0,123,255,0.2);
+}
+
+.form-select {
+  width: 100%;
+  max-height: 200px;
+  padding: 10px;
+  border: 2px solid #e0e0e0;
+  border-radius: 0 0 8px 8px;
+  font-size: 16px;
+  appearance: none;
+  background: #fff;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  overflow-y: auto;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  border-top: none;
+  z-index: 1000;
+}
+
+.form-select:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+.form-select option {
+  padding: 8px 15px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.form-select option:hover {
+  background: #f0f7ff;
+  color: #007bff;
+}
+</style>
+
+<script>
+function filterOptions(input) {
+  const filter = input.value.toLowerCase();
+  const select = document.getElementById('jiraAssignedFilterOpen');
+  const options = select.getElementsByTagName('option');
+  
+  for (let i = 0; i < options.length; i++) {
+    const txtValue = options[i].textContent || options[i].innerText;
+    if (txtValue.toLowerCase().indexOf(filter) > -1) {
+      options[i].style.display = "";
+    } else {
+      options[i].style.display = "none";
+    }
+  }
+}
+
+// Show/hide select on input focus
+const input = document.querySelector('.search-input');
+const select = document.getElementById('jiraAssignedFilterOpen');
+
+input.addEventListener('focus', () => {
+  select.style.display = 'block';
+});
+
+document.addEventListener('click', (e) => {
+  if (!document.querySelector('.searchable-select-container').contains(e.target)) {
+    select.style.display = 'none';
+  }
+});
+</script>
