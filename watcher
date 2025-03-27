@@ -1,0 +1,34 @@
+Watcher.py Script
+
+import requests
+import subprocess
+
+# API details
+URL = "https://demo.defectdojo.org/api/v2/engagements/10"
+API_TOKEN = "jhgbmkggjhk"
+
+# Headers for the API request
+headers = {
+    "Authorization": f"Token {API_TOKEN}"
+}
+
+# Fetch the commit_hash
+response = requests.get(URL, headers=headers)
+if response.status_code == 200:
+    data = response.json()
+    commit_hash = data.get('commit_hash', None)
+
+    if commit_hash == '0':
+        # Execute Main.py if commit_hash is '0'
+        subprocess.run(["python3", "/path/to/Main.py"])
+        
+        # Update commit_hash to '4'
+        update_data = {"commit_hash": "4"}
+        update_response = requests.patch(URL, json=update_data, headers=headers)
+        if update_response.status_code != 200:
+            print(f"Failed to update commit_hash to '4'. Status code: {update_response.status_code}")
+    else:
+        # If commit_hash is not '0', do nothing
+        pass
+else:
+    print(f"Failed to fetch data from API. Status code: {response.status_code}")
