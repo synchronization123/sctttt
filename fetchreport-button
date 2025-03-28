@@ -1,0 +1,142 @@
+<!-- Add this button next to existing buttons in the "d-flex justify-content-between mb-2" div -->
+<button class="btn btn-warning btn-sm" id="fetchReportBtn" onclick="fetchReportImmediately()" data-tooltip="Use with caution">Fetch Report Immediately</button>
+
+<!-- Add this modal structure at the bottom of your container, before the closing </div> -->
+<div id="configModal" class="modal">
+    <h2>Configuration Settings</h2>
+    <div class="mb-2">
+        <p>Fetching report immediately will set the configuration to process now.</p>
+    </div>
+    <div class="mb-2">
+        <button class="btn btn-primary" id="confirmBtn" onclick="confirmFetchReport()">Confirm</button>
+    </div>
+    <div class="console" style="background: #f0f4f8; padding: 10px; border-radius: 5px; min-height: 100px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.9rem;">
+        <div id="consoleOutput"></div>
+        <button class="btn btn-secondary mt-2" onclick="closeConfigModal()">Close</button>
+    </div>
+</div>
+
+<!-- Add this JavaScript at the end of your existing <script> tag -->
+<script>
+function showConfigModal() {
+    const modal = document.getElementById("configModal");
+    const overlay = document.getElementById("modalOverlay");
+    document.getElementById("consoleOutput").innerHTML = ""; // Clear console
+    modal.style.display = "block";
+    overlay.style.display = "block";
+}
+
+function closeConfigModal() {
+    const modal = document.getElementById("configModal");
+    const overlay = document.getElementById("modalOverlay");
+    modal.style.display = "none";
+    overlay.style.display = "none";
+}
+
+function fetchReportImmediately() {
+    showConfigModal(); // Show confirmation modal
+}
+
+async function confirmFetchReport() {
+    const consoleOutput = document.getElementById("consoleOutput");
+    const fetchReportBtn = document.getElementById("fetchReportBtn");
+    const confirmBtn = document.getElementById("confirmBtn");
+    const engagementId = 1; // Static for now; make dynamic if needed
+    
+    try {
+        // Step 1: Fetch current engagement data using GET
+        const getResponse = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
+            method: "GET",
+            headers: { 
+                "Content-Type": "application/json" 
+            },
+            credentials: "include"
+        });
+
+        if (!getResponse.ok) {
+            consoleOutput.innerHTML = "Failed to fetch engagement data!";
+            showAlert("Failed to fetch engagement data!", "danger");
+            return;
+        }
+
+        const engagementData = await getResponse.json();
+
+        // Step 2: Prepare payload with fetched data and commit_hash set to 0
+        const payload = {
+            id: engagementData.id,              // Use fetched ID
+            name: engagementData.name,          // Preserve existing name
+            target_start: engagementData.target_start || new Date().toISOString().split('T')[0], // Use existing or now()
+            target_end: engagementData.target_end || new Date().toISOString().split('T')[0],     // Use existing or now()
+            lead: engagementData.lead || 1,     // Use existing or default to 1
+            product: engagementData.product || 2, // Use existing or default to 2
+            commit_hash: "0"                    // Set to "0" as requested
+        };
+
+        // Step 3: Send PUT request with updated data
+        const putResponse = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
+            method: "PUT",
+            headers: { 
+                "Content-Type": "application/json", 
+                "X-CSRFToken": csrfToken 
+            },
+            body: JSON.stringify(payload),
+            credentials: "include"
+        });
+
+        if (putResponse.ok) {
+            consoleOutput.innerHTML = `
+                Request sent to server.......<br>
+                Do not forget to revert back the settings<br>
+                Thank You...
+            `;
+            showAlert("Report fetch initiated successfully!", "success");
+            fetchReportBtn.disabled = true; // Disable outer button
+            confirmBtn.disabled = true;     // Disable Confirm button
+            fetchEngagements(); // Refresh engagements to reflect the change
+        } else {
+            consoleOutput.innerHTML = "Failed to initiate report fetch!";
+            showAlert("Failed to initiate report fetch!", "danger");
+        }
+    } catch (error) {
+        consoleOutput.innerHTML = "Error initiating report fetch!";
+        showAlert("Error initiating report fetch!", "danger");
+        console.error("Error:", error);
+    }
+}
+
+// Function to check and update button state based on commit_hash
+async function updateFetchButtonState() {
+    const fetchReportBtn = document.getElementById("fetchReportBtn");
+    const confirmBtn = document.getElementById("confirmBtn");
+    const engagementId = 1; // Static for now; make dynamic if needed
+
+    try {
+        const response = await fetch(`${BASE_URL}/engagements/${engagementId}/`, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include"
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const isDisabled = data.commit_hash === "0";
+            fetchReportBtn.disabled = isDisabled; // Disable if commit_hash is "0"
+            confirmBtn.disabled = isDisabled;     // Sync Confirm button state
+        }
+    } catch (error) {
+        console.error("Error checking commit_hash:", error);
+    }
+}
+
+// Update button state on page load and after engagements refresh
+document.addEventListener("DOMContentLoaded", () => {
+    updateFetchButtonState();
+});
+
+// Hook into fetchEngagements to update button state after refresh
+const originalFetchEngagements = fetchEngagements;
+fetchEngagements = async function() {
+    await originalFetchEngagements.apply(this, arguments);
+    updateFetchButtonState();
+};
+</script>
