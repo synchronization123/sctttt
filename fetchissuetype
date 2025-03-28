@@ -1,0 +1,134 @@
+import requests
+import json
+from datetime import datetime
+
+# DefectDojo API details
+DEFECTDOJO_BASE_URL = "https://demo.defectdojo.org/api/v2"
+DEFECTDOJO_TOKEN = "abc"
+
+# JIRA API details
+JIRA_URL = "https://jira.demo.almworks.com/rest/api/2/search"
+JIRA_TOKEN = "abc"
+
+# Common headers
+DEFECTDOJO_HEADERS = {
+    "Authorization": f"Token {DEFECTDOJO_TOKEN}",
+    "Content-Type": "application/json"
+}
+
+JIRA_HEADERS = {
+    "Authorization": f"Bearer {JIRA_TOKEN}",
+    "Content-Type": "application/json"
+}
+
+def fetch_all_tests():
+    """Fetch all tests with 'crm_jira' tag from DefectDojo with pagination."""
+    tests = []
+    url = f"{DEFECTDOJO_BASE_URL}/tests/?tags=crm_jira&page_size=100"
+    
+    while url:
+        try:
+            response = requests.get(url, headers=DEFECTDOJO_HEADERS)
+            response.raise_for_status()
+            data = response.json()
+            tests.extend(data.get("results", []))
+            url = data.get("next")
+        except requests.RequestException as e:
+            print(f"Error fetching tests: {e}")
+            break
+
+    return tests
+
+def fetch_jira_components(issue_keys):
+    """Fetch components of JIRA issues in batches of 50."""
+    jira_components = {}
+
+    for i in range(0, len(issue_keys), 50):
+        chunk = issue_keys[i:i+50]
+        jql_query = f"key in ({','.join(chunk)})"
+        params = {
+            "jql": jql_query,
+            "fields": "key,components",
+            "maxResults": 50
+        }
+
+        try:
+            response = requests.get(JIRA_URL, headers=JIRA_HEADERS, params=params)
+            response.raise_for_status()
+            jira_components.update({
+                issue["key"]: [comp["name"] for comp in issue["fields"]["components"]]
+                for issue in response.json().get("issues", [])
+            })
+        except requests.RequestException as e:
+            print(f"Error fetching JIRA components: {e}")
+
+    return jira_components
+
+def update_test_commit_hash(test_id):
+    """Update the 'commit_hash' field in DefectDojo test with 'Security'."""
+    url = f"{DEFECTDOJO_BASE_URL}/tests/{test_id}/"
+    test_data = {
+        "commit_hash": "Security"
+    }
+
+    try:
+        response = requests.patch(url, headers=DEFECTDOJO_HEADERS, json=test_data)
+        response.raise_for_status()
+        print(f"✅ Updated test {test_id} with commit_hash: Security")
+    except requests.RequestException as e:
+        print(f"❌ Error updating test {test_id}: {e}")
+
+def main():
+    # Get today's date in the same format as DefectDojo's created field
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    tests = fetch_all_tests()
+
+    if not tests:
+        print("No tests found.")
+        return
+
+    jira_issues = {}  # {issue_key: [(test_id, commit_hash)]}
+
+    # Filter tests created today and check commit_hash
+    for test in tests:
+        created_date = test.get("created", "").split("T")[0]  # Extract date part
+        commit_hash = test.get("commit_hash", "")
+        
+        if created_date == today:
+            if commit_hash == "Security":
+                print(f"🔹 Skipping test {test['id']} - already has Security in commit_hash")
+                continue
+                
+            issue_key = test["title"]
+            if issue_key not in jira_issues:
+                jira_issues[issue_key] = []
+            jira_issues[issue_key].append((test["id"], commit_hash))
+        else:
+            print(f"Skipping test {test['id']} - not created today ({created_date})")
+
+    if not jira_issues:
+        print("No tests from today require updates.")
+        return
+
+    # Fetch JIRA components for selected issue keys
+    jira_components = fetch_jira_components(list(jira_issues.keys()))
+
+    for issue_key, test_info in jira_issues.items():
+        if issue_key in jira_components:
+            components = jira_components[issue_key]
+            # Check if 'Security' or 'AppSecurity' is in components
+            if any(comp in ["Security", "AppSecurity"] for comp in components):
+                for test_id, commit_hash in test_info:
+                    # This check is redundant now due to earlier filter, but kept for clarity
+                    if commit_hash != "Security":
+                        update_test_commit_hash(test_id)
+                    else:
+                        print(f"🔹 Skipping test {test_id} - already has Security in commit_hash")
+            else:
+                print(f"🔹 No Security/AppSecurity component found for {issue_key}")
+        else:
+            print(f"⚠️ Could not fetch components for {issue_key}")
+
+if __name__ == "__main__":
+    main()
